@@ -491,7 +491,7 @@ async function checkPwd(e) {
       }
     } catch(ex){}
     document.getElementById('pwd-gate').style.display = 'none';
-    document.getElementById('app-root').style.display = 'block';
+    document.getElementById('app-root').style.display = 'flex';
     // Force Leaflet to recalculate map dimensions now that the container is visible
     setTimeout(function(){
       if (typeof leafmap !== 'undefined' && leafmap) leafmap.invalidateSize();
@@ -510,7 +510,7 @@ async function checkPwd(e) {
   try {
     if (localStorage.getItem('td_auth') === '1' || sessionStorage.getItem('td_auth') === '1') {
       document.getElementById('pwd-gate').style.display = 'none';
-      document.getElementById('app-root').style.display = 'block';
+      document.getElementById('app-root').style.display = 'flex';
       setTimeout(function(){
         if (typeof leafmap !== 'undefined' && leafmap) leafmap.invalidateSize();
         if (typeof confirmMap !== 'undefined' && confirmMap) confirmMap.invalidateSize();
@@ -525,7 +525,7 @@ async function checkPwd(e) {
 })();
 </script>
 
-<div id="app-root" style="display:none;height:100%">
+<div id="app-root" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden">
 <header>
   <div class="logo">TD <span>Dispatch</span></div>
   <div class="depotinfo"><div class="ddot"></div>DEPOT &middot; TIRE DISTRIBUTORS &middot; 31 S MAGNOLIA RD &middot; TIFTON, GA 31794</div>
