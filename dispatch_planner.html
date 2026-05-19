@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -492,8 +493,12 @@ async function checkPwd(e) {
     } catch(ex){}
     document.getElementById('pwd-gate').style.display = 'none';
     document.getElementById('app-root').style.display = 'block';
-  } else {
-    var err = document.getElementById('pwd-err');
+    // Force Leaflet to recalculate map dimensions now that the container is visible
+    setTimeout(function(){
+      if (typeof leafmap !== 'undefined' && leafmap) leafmap.invalidateSize();
+      if (typeof confirmMap !== 'undefined' && confirmMap) confirmMap.invalidateSize();
+      if (typeof locMap !== 'undefined' && locMap) locMap.invalidateSize();
+    }, 100);
     err.textContent = 'Incorrect password — please try again.';
     document.getElementById('pwd-inp').value = '';
     document.getElementById('pwd-inp').focus();
@@ -507,6 +512,11 @@ async function checkPwd(e) {
     if (localStorage.getItem('td_auth') === '1' || sessionStorage.getItem('td_auth') === '1') {
       document.getElementById('pwd-gate').style.display = 'none';
       document.getElementById('app-root').style.display = 'block';
+      setTimeout(function(){
+        if (typeof leafmap !== 'undefined' && leafmap) leafmap.invalidateSize();
+        if (typeof confirmMap !== 'undefined' && confirmMap) confirmMap.invalidateSize();
+        if (typeof locMap !== 'undefined' && locMap) locMap.invalidateSize();
+      }, 300);
     } else {
       setTimeout(function(){ document.getElementById('pwd-inp').focus(); }, 150);
     }
