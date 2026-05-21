@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -719,6 +718,27 @@ async function checkPwd(e) {
       </div>
       <div id="settings-status" style="font-size:12px;min-height:18px"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid #262a3e">
+        <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:10px">&#x1F4BE; Cloud Log Sync (Firebase)</div>
+        <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:10px">
+          Connect to Firebase to sync route logs across all devices. <a href="https://console.firebase.google.com" target="_blank" style="color:#818cf8">Set up at console.firebase.google.com</a> — free tier is plenty.
+        </div>
+        <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">Database URL</label>
+        <input id="settings-fburl" type="text"
+          placeholder="https://your-project-default-rtdb.firebaseio.com"
+          style="width:100%;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:9px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:12px;outline:none;margin-bottom:8px;box-sizing:border-box">
+        <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">Database Secret</label>
+        <input id="settings-fbsecret" type="password"
+          placeholder="Your Firebase database secret"
+          onfocus="this.type='text'" onblur="this.type='password'"
+          style="width:100%;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:9px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:12px;outline:none;margin-bottom:10px;box-sizing:border-box">
+        <button onclick="saveFirebaseConfig()"
+          style="background:#1b2035;border:1px solid #2d3655;border-radius:6px;color:#818cf8;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s">
+          &#x1F4BE; Save &amp; Test Connection
+        </button>
+        <div id="settings-fbstatus" style="font-size:11px;margin-top:8px;min-height:16px"></div>
+      </div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid #262a3e">
         <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:8px">Depot</div>
         <div style="font-size:12px;color:#6b7399">31 S Magnolia Rd, Tifton, GA 31794 &nbsp;&middot;&nbsp; Plus Code: CG56+46</div>
         <div style="font-size:11px;color:#3a4060;margin-top:4px">Coords: 31.407812, -83.489437</div>
@@ -942,21 +962,79 @@ async function calcSchedule(ordered, depTime) {
 }
 
 // ── ROUTE LOG STORAGE ──
-function loadLog(route) {
-  try{ var d=localStorage.getItem('td_log_'+route.replace(/ /g,'-')); return d?JSON.parse(d):[]; }catch(e){ return []; }
+// ── CLOUD LOG STORAGE (Firebase Realtime Database) ──
+// Falls back to localStorage if Firebase not configured
+var FB_URL  = '';  // set via Settings: e.g. https://your-project.firebaseio.com
+var FB_SECRET = ''; // Firebase database secret
+
+function getFBConfig() {
+  try {
+    FB_URL    = localStorage.getItem('td_fb_url')    || '';
+    FB_SECRET = localStorage.getItem('td_fb_secret') || '';
+  } catch(e){}
+  return FB_URL && FB_SECRET;
 }
-function saveLog(route, entries) {
-  try{ localStorage.setItem('td_log_'+route.replace(/ /g,'-'),JSON.stringify(entries)); }catch(e){}
+
+function fbPath(route) {
+  return FB_URL + '/td_logs/' + route.replace(/ /g,'-').replace(/[.#$\[\]]/g,'_') + '.json?auth=' + FB_SECRET;
 }
-function addLogEntry(route, entry) {
-  var entries=loadLog(route);
-  entries.unshift(entry); // newest first
-  if(entries.length>50) entries=entries.slice(0,50);
-  saveLog(route,entries);
-  renderLog(route);
+
+async function loadLog(route) {
+  // Try localStorage first (instant)
+  var local = [];
+  try { var d = localStorage.getItem('td_log_'+route.replace(/ /g,'-')); local = d ? JSON.parse(d) : []; } catch(e){}
+
+  if (!getFBConfig()) return local;
+
+  try {
+    var resp = await fetch(fbPath(route));
+    if (resp.ok) {
+      var data = await resp.json();
+      if (data && Array.isArray(data)) {
+        // Merge: Firebase is source of truth, update local cache
+        try { localStorage.setItem('td_log_'+route.replace(/ /g,'-'), JSON.stringify(data)); } catch(e){}
+        return data;
+      }
+    }
+  } catch(e) { console.warn('Firebase read failed, using local cache:', e); }
+  return local;
+}
+
+async function saveLog(route, entries) {
+  // Always save locally first
+  try { localStorage.setItem('td_log_'+route.replace(/ /g,'-'), JSON.stringify(entries)); } catch(e){}
+
+  if (!getFBConfig()) return;
+
+  try {
+    await fetch(fbPath(route), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entries)
+    });
+  } catch(e) { console.warn('Firebase write failed, saved locally only:', e); }
+}
+
+async function addLogEntry(route, entry) {
+  var entries = await loadLog(route);
+  entries.unshift(entry);
+  if (entries.length > 50) entries = entries.slice(0, 50);
+  await saveLog(route, entries);
+  renderLogAsync(route);
+}
+
+// Async wrapper for renderLog (since loadLog is now async)
+async function renderLogAsync(route) {
+  var entries = await loadLog(route);
+  renderLogEntries(route, entries);
 }
 
 function renderLog(route) {
+  // Called on tab switch — async load then render
+  renderLogAsync(route);
+}
+
+function renderLogEntries(route, entries) {
   var rid=route.replace(/ /g,'-');
   var entries=loadLog(route);
   var badge=document.getElementById('logbadge-'+rid);
@@ -2185,7 +2263,46 @@ function openSettings() {
   document.getElementById('settings-apikey').value = key;
   document.getElementById('settings-status').textContent = key ? '✓ API key is set' : '';
   document.getElementById('settings-status').style.color = '#22c55e';
+  document.getElementById('settings-fburl').value    = localStorage.getItem('td_fb_url')    || '';
+  document.getElementById('settings-fbsecret').value = localStorage.getItem('td_fb_secret') || '';
+  document.getElementById('settings-fbstatus').textContent = '';
   document.getElementById('settings-overlay').classList.add('open');
+}
+
+async function saveFirebaseConfig() {
+  var url    = document.getElementById('settings-fburl').value.trim().replace(/\/$/, '');
+  var secret = document.getElementById('settings-fbsecret').value.trim();
+  var st     = document.getElementById('settings-fbstatus');
+
+  if (!url || !secret) {
+    st.textContent = 'Please enter both the database URL and secret.';
+    st.style.color = '#f59e0b'; return;
+  }
+
+  st.textContent = '⏳ Testing connection…'; st.style.color = '#6b7399';
+
+  try {
+    var testUrl = url + '/td_ping.json?auth=' + secret;
+    var resp = await fetch(testUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connected: true, ts: new Date().toISOString() })
+    });
+    if (resp.ok) {
+      localStorage.setItem('td_fb_url', url);
+      localStorage.setItem('td_fb_secret', secret);
+      FB_URL = url; FB_SECRET = secret;
+      st.textContent = '✓ Connected! Route logs will now sync across all devices.';
+      st.style.color = '#22c55e';
+    } else {
+      var err = await resp.json();
+      st.textContent = '✗ Error ' + resp.status + ': ' + (err.error || 'Check your URL and secret.');
+      st.style.color = '#ef4444';
+    }
+  } catch(e) {
+    st.textContent = '✗ Could not reach Firebase. Check the URL is correct.';
+    st.style.color = '#ef4444';
+  }
 }
 function closeSettings() {
   document.getElementById('settings-overlay').classList.remove('open');
