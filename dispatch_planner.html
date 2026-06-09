@@ -192,6 +192,31 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .log-return-lbl{color:#6b7399;font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:1px}
 .log-return-time{color:#22c55e;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px}
 .log-toolbar{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #262a3e;flex-shrink:0;background:#0d0f18;flex-wrap:wrap}
+.log-analytics{border-bottom:1px solid #262a3e;flex-shrink:0;background:#0a0c14}
+.la-section{background:#0a0c14}
+.la-title{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#3a4060;transition:color .15s;user-select:none}
+.la-title:hover{color:#818cf8}
+.la-chevron{font-size:10px;transition:transform .2s}
+.la-body{padding:0 16px 14px;border-top:1px solid #1a1d2e}
+.la-stats{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0 10px}
+.la-stat{background:#13161f;border:1px solid #1a1d2e;border-radius:7px;padding:8px 14px;min-width:80px;text-align:center}
+.la-val{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:#e2e6f3}
+.la-lbl{font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-top:2px}
+.la-sub-title{font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#3a4060;margin:12px 0 6px}
+.la-driver-table{display:flex;flex-direction:column;gap:4px}
+.la-driver-row{display:flex;align-items:center;gap:10px;background:#13161f;border:1px solid #1a1d2e;border-radius:6px;padding:7px 12px;flex-wrap:wrap}
+.la-driver-name{font-size:12px;font-weight:600;color:#818cf8;flex:1;min-width:120px}
+.la-driver-stat{font-size:11px}
+.la-ds-val{color:#e2e6f3;font-weight:700}
+.la-ds-lbl{color:#6b7399}
+.la-stop-list{display:flex;flex-direction:column;gap:5px}
+.la-stop-row{display:flex;align-items:center;gap:8px}
+.la-stop-name{font-size:11px;color:#c4cad8;width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.la-stop-bar-wrap{flex:1;height:4px;background:#1a1d2e;border-radius:2px;overflow:hidden}
+.la-stop-bar{height:100%;border-radius:2px;transition:width .3s}
+.la-stop-pct{font-size:10px;color:#6b7399;width:50px;text-align:right;flex-shrink:0}
+.la-insights{display:flex;flex-direction:column;gap:6px}
+.la-insight{font-size:11px;color:#a0a8c0;line-height:1.55;padding:8px 10px;background:#13161f;border-left:3px solid #22c55e;border-radius:0 5px 5px 0}
 .export-btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:5px 12px;border-radius:5px;cursor:pointer;border:1px solid #262a3e;background:#13161f;color:#6b7399;transition:all .15s;white-space:nowrap}
 .export-btn:hover{border-color:#22c55e;color:#22c55e}
 .export-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
@@ -726,9 +751,9 @@ async function checkPwd(e) {
         <input id="settings-fburl" type="text"
           placeholder="https://your-project-default-rtdb.firebaseio.com"
           style="width:100%;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:9px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:12px;outline:none;margin-bottom:8px;box-sizing:border-box">
-        <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">Database Secret</label>
+        <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">Database Secret <span style="color:#3a4060;text-transform:none;font-weight:400;letter-spacing:0">(optional)</span></label>
         <input id="settings-fbsecret" type="password"
-          placeholder="Your Firebase database secret"
+          placeholder="Leave blank if using open rules"
           onfocus="this.type='text'" onblur="this.type='password'"
           style="width:100%;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:9px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:12px;outline:none;margin-bottom:10px;box-sizing:border-box">
         <button onclick="saveFirebaseConfig()"
@@ -978,11 +1003,16 @@ function getFBConfig() {
     FB_URL    = localStorage.getItem('td_fb_url')    || '';
     FB_SECRET = localStorage.getItem('td_fb_secret') || '';
   } catch(e){}
-  return FB_URL && FB_SECRET;
+  return !!FB_URL;  // secret is optional
 }
 
 function fbPath(route) {
-  return FB_URL + '/td_logs/' + route.replace(/ /g,'-').replace(/[.#$\[\]]/g,'_') + '.json?auth=' + FB_SECRET;
+  var path = FB_URL + '/td_logs/' + route.replace(/ /g,'-').replace(/[.#$\[\]]/g,'_') + '.json';
+  return FB_SECRET ? path + '?auth=' + FB_SECRET : path;
+}
+
+function fbPingPath() {
+  return FB_SECRET ? FB_URL + '/td_ping.json?auth=' + FB_SECRET : FB_URL + '/td_ping.json';
 }
 
 async function loadLog(route) {
@@ -1041,17 +1071,16 @@ function renderLog(route) {
 }
 
 function renderLogEntries(route, entries) {
-  var rid=route.replace(/ /g,'-');
-  var entries=loadLog(route);
-  var badge=document.getElementById('logbadge-'+rid);
-  if(badge){ badge.textContent=entries.length; badge.className='log-badge'+(entries.length?' has-logs':''); }
-  var pane=document.getElementById('log-'+rid);
-  if(!pane) return;
-  var empty=document.getElementById('logempty-'+rid);
-  if(!entries.length){ if(empty) empty.style.display=''; pane.querySelectorAll('.log-entry,.log-toolbar').forEach(function(e){e.remove()}); return; }
-  if(empty) empty.style.display='none';
-  // Remove old entries and toolbar, rebuild
-  pane.querySelectorAll('.log-entry,.log-toolbar').forEach(function(e){e.remove();});
+  var rid = route.replace(/ /g,'-');
+  // entries is already loaded and passed in — do NOT call loadLog() here
+  var badge = document.getElementById('logbadge-'+rid);
+  if (badge) { badge.textContent = entries.length; badge.className = 'log-badge'+(entries.length?' has-logs':''); }
+  var pane = document.getElementById('log-'+rid);
+  if (!pane) return;
+  var empty = document.getElementById('logempty-'+rid);
+  if (!entries.length) { if (empty) empty.style.display=''; pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics').forEach(function(e){e.remove();}); return; }
+  if (empty) empty.style.display = 'none';
+  pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics').forEach(function(e){e.remove();});
   // Export toolbar
   var toolbar=document.createElement('div');
   toolbar.className='log-toolbar';
@@ -1059,6 +1088,13 @@ function renderLogEntries(route, entries) {
     '<button class="export-btn" onclick="exportAllCSV(\''+route+'\')">&#x2193; Export All (CSV)</button>'+
     '<button class="export-btn pr" onclick="exportAllPrint(\''+route+'\')">&#x1F5A8; Print All</button>';
   pane.insertBefore(toolbar, empty);
+
+  // ── ANALYTICS PANEL ──
+  var analytics = document.createElement('div');
+  analytics.className = 'log-analytics';
+  analytics.innerHTML = buildAnalytics(route, entries, RC[route]);
+  pane.insertBefore(analytics, empty);
+
   var color=RC[route];
   entries.forEach(function(entry,idx){
     var el=document.createElement('div');
@@ -1110,6 +1146,136 @@ function renderLogEntries(route, entries) {
     if(idx===0){ el.classList.add('open'); }
     pane.appendChild(el);
   });
+}
+
+// ── ROUTE ANALYTICS ──
+function buildAnalytics(route, entries, color) {
+  if (!entries || entries.length === 0) return '';
+  color = color || '#22c55e';
+
+  // Core stats
+  var totalRuns   = entries.length;
+  var totalStops  = entries.reduce(function(s,e){ return s + (e.stops||[]).length; }, 0);
+  var avgStops    = (totalStops / totalRuns).toFixed(1);
+  var validTimes  = entries.filter(function(e){ return e.totalMin > 0; });
+  var avgMins     = validTimes.length ? validTimes.reduce(function(s,e){ return s+e.totalMin; },0) / validTimes.length : 0;
+  var avgMiles    = entries.filter(function(e){ return e.miles>0; }).length ?
+    entries.filter(function(e){ return e.miles>0; }).reduce(function(s,e){ return s+e.miles; },0) /
+    entries.filter(function(e){ return e.miles>0; }).length : 0;
+
+  // Best / worst run
+  var sorted = validTimes.slice().sort(function(a,b){ return a.totalMin - b.totalMin; });
+  var fastest = sorted[0];
+  var slowest  = sorted[sorted.length-1];
+
+  // Per-driver stats
+  var driverMap = {};
+  entries.forEach(function(e){
+    var d = e.driver || 'Unassigned';
+    if (!driverMap[d]) driverMap[d] = { runs:0, stops:0, mins:0 };
+    driverMap[d].runs++;
+    driverMap[d].stops += (e.stops||[]).length;
+    if (e.totalMin > 0) driverMap[d].mins += e.totalMin;
+  });
+
+  // Most frequent stops (top 5 customers)
+  var stopFreq = {};
+  entries.forEach(function(e){
+    (e.stops||[]).forEach(function(s){
+      var k = s.name || s.CompanyName || '';
+      if (k) stopFreq[k] = (stopFreq[k]||0) + 1;
+    });
+  });
+  var topStops = Object.keys(stopFreq)
+    .sort(function(a,b){ return stopFreq[b]-stopFreq[a]; })
+    .slice(0,5);
+
+  // Insights
+  var insights = [];
+  if (totalRuns >= 3) {
+    var recentAvg = entries.slice(0,3).reduce(function(s,e){ return s+e.totalMin; },0) / 3;
+    var olderAvg  = entries.slice(-3).reduce(function(s,e){ return s+e.totalMin; },0) / 3;
+    if (recentAvg < olderAvg - 15) insights.push('&#x1F4C8; Recent runs are averaging <strong>'+Math.round(olderAvg-recentAvg)+' min faster</strong> than older runs — route efficiency is improving.');
+    else if (recentAvg > olderAvg + 15) insights.push('&#x26A0; Recent runs are running <strong>'+Math.round(recentAvg-olderAvg)+' min longer</strong> than usual — worth reviewing stop order or traffic patterns.');
+  }
+  if (avgStops > 0 && totalRuns >= 2) {
+    var maxStops = Math.max.apply(null, entries.map(function(e){ return (e.stops||[]).length; }));
+    var minStops = Math.min.apply(null, entries.map(function(e){ return (e.stops||[]).length; }));
+    if (maxStops - minStops > 5) insights.push('&#x1F4CB; Stop counts vary significantly (<strong>'+minStops+'–'+maxStops+' stops</strong>) — consider reviewing which stops are being skipped on lighter days.');
+  }
+  if (Object.keys(driverMap).length > 1) {
+    var driverTimes = Object.keys(driverMap).filter(function(d){ return driverMap[d].mins>0; });
+    if (driverTimes.length >= 2) {
+      driverTimes.sort(function(a,b){ return (driverMap[a].mins/driverMap[a].runs) - (driverMap[b].mins/driverMap[b].runs); });
+      var fastDriver = driverTimes[0];
+      var slowDriver = driverTimes[driverTimes.length-1];
+      var diff = Math.round((driverMap[slowDriver].mins/driverMap[slowDriver].runs) - (driverMap[fastDriver].mins/driverMap[fastDriver].runs));
+      if (diff > 20) insights.push('&#x1F464; <strong>'+fastDriver+'</strong> averages <strong>'+diff+' min faster</strong> per run than '+slowDriver+' — consider pairing for a training ride.');
+    }
+  }
+
+  // Build HTML
+  var h = '<div class="la-section">';
+  h += '<div class="la-title" onclick="toggleAnalytics(this)"><span>&#x1F4CA; Route Analytics — '+totalRuns+' run'+(totalRuns!==1?'s':'')+' on record</span><span class="la-chevron">&#x25BE;</span></div>';
+  h += '<div class="la-body">';
+
+  // Summary stats row
+  h += '<div class="la-stats">';
+  h += '<div class="la-stat"><div class="la-val" style="color:'+color+'">'+totalRuns+'</div><div class="la-lbl">Runs Logged</div></div>';
+  h += '<div class="la-stat"><div class="la-val">'+avgStops+'</div><div class="la-lbl">Avg Stops</div></div>';
+  h += '<div class="la-stat"><div class="la-val">'+fmtDuration(avgMins)+'</div><div class="la-lbl">Avg Time</div></div>';
+  if (avgMiles > 0) h += '<div class="la-stat"><div class="la-val">'+avgMiles.toFixed(0)+'</div><div class="la-lbl">Avg Miles</div></div>';
+  if (fastest) h += '<div class="la-stat"><div class="la-val" style="color:#22c55e">'+fmtDuration(fastest.totalMin)+'</div><div class="la-lbl">Best Run</div></div>';
+  if (slowest && slowest !== fastest) h += '<div class="la-stat"><div class="la-val" style="color:#f59e0b">'+fmtDuration(slowest.totalMin)+'</div><div class="la-lbl">Longest Run</div></div>';
+  h += '</div>';
+
+  // Driver breakdown
+  if (Object.keys(driverMap).length) {
+    h += '<div class="la-sub-title">By Driver</div><div class="la-driver-table">';
+    Object.keys(driverMap).forEach(function(d){
+      var dm = driverMap[d];
+      var avgT = dm.runs > 0 ? fmtDuration(dm.mins/dm.runs) : '—';
+      var avgS = (dm.stops/dm.runs).toFixed(1);
+      h += '<div class="la-driver-row">';
+      h += '<div class="la-driver-name">&#x1F464; '+d+'</div>';
+      h += '<div class="la-driver-stat"><span class="la-ds-val">'+dm.runs+'</span><span class="la-ds-lbl"> runs</span></div>';
+      h += '<div class="la-driver-stat"><span class="la-ds-val">'+avgS+'</span><span class="la-ds-lbl"> avg stops</span></div>';
+      h += '<div class="la-driver-stat"><span class="la-ds-val">'+avgT+'</span><span class="la-ds-lbl"> avg time</span></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  // Top stops
+  if (topStops.length) {
+    h += '<div class="la-sub-title">Most Frequent Stops</div><div class="la-stop-list">';
+    topStops.forEach(function(name){
+      var pct = Math.round((stopFreq[name]/totalRuns)*100);
+      h += '<div class="la-stop-row">';
+      h += '<div class="la-stop-name">'+name+'</div>';
+      h += '<div class="la-stop-bar-wrap"><div class="la-stop-bar" style="width:'+pct+'%;background:'+color+'"></div></div>';
+      h += '<div class="la-stop-pct">'+stopFreq[name]+' of '+totalRuns+'</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  // Insights
+  if (insights.length) {
+    h += '<div class="la-sub-title">&#x1F4A1; Insights</div><div class="la-insights">';
+    insights.forEach(function(i){ h += '<div class="la-insight">'+i+'</div>'; });
+    h += '</div>';
+  }
+
+  h += '</div></div>';
+  return h;
+}
+
+function toggleAnalytics(titleEl) {
+  var body = titleEl.parentElement.querySelector('.la-body');
+  var chev = titleEl.querySelector('.la-chevron');
+  if (body) { body.style.display = body.style.display === 'none' ? '' : 'none'; }
+  if (chev) { chev.style.transform = body.style.display === 'none' ? 'rotate(-90deg)' : ''; }
 }
 
 function toggleLog(headEl) {
@@ -2341,33 +2507,40 @@ async function saveFirebaseConfig() {
   var secret = document.getElementById('settings-fbsecret').value.trim();
   var st     = document.getElementById('settings-fbstatus');
 
-  if (!url || !secret) {
-    st.textContent = 'Please enter both the database URL and secret.';
+  if (!url) {
+    st.textContent = 'Please enter the database URL.';
     st.style.color = '#f59e0b'; return;
   }
 
   st.textContent = '⏳ Testing connection…'; st.style.color = '#6b7399';
 
   try {
-    var testUrl = url + '/td_ping.json?auth=' + secret;
-    var resp = await fetch(testUrl, {
+    var pingUrl = secret ? url + '/td_ping.json?auth=' + secret : url + '/td_ping.json';
+    var resp = await fetch(pingUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connected: true, ts: new Date().toISOString() })
     });
     if (resp.ok) {
       localStorage.setItem('td_fb_url', url);
-      localStorage.setItem('td_fb_secret', secret);
+      if (secret) localStorage.setItem('td_fb_secret', secret);
+      else localStorage.removeItem('td_fb_secret');
       FB_URL = url; FB_SECRET = secret;
       st.textContent = '✓ Connected! Route logs will now sync across all devices.';
       st.style.color = '#22c55e';
     } else {
-      var err = await resp.json();
-      st.textContent = '✗ Error ' + resp.status + ': ' + (err.error || 'Check your URL and secret.');
+      var txt = await resp.text();
+      var msg = '';
+      try { msg = JSON.parse(txt).error || txt; } catch(e){ msg = txt; }
+      if (resp.status === 401 || resp.status === 403) {
+        st.innerHTML = '✗ Permission denied. Make sure your Firebase rules allow writes to <code>td_logs</code> and <code>td_ping</code>. <a href="https://console.firebase.google.com" target="_blank" style="color:#818cf8">Open Firebase Console</a>';
+      } else {
+        st.textContent = '✗ Error ' + resp.status + ': ' + msg;
+      }
       st.style.color = '#ef4444';
     }
   } catch(e) {
-    st.textContent = '✗ Could not reach Firebase. Check the URL is correct.';
+    st.textContent = '✗ Could not reach Firebase — check the URL is correct (no trailing slash).';
     st.style.color = '#ef4444';
   }
 }
