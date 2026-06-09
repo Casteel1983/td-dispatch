@@ -807,6 +807,12 @@ var ROUTE_CONSTRAINTS = {
   'Route 5': {
     cityOrder: ['NASHVILLE','ALAPAHA','FITZGERALD','BROXTON','DOUGLAS'],
     cityFirstCustomer: {}
+  },
+  'Route 7': {
+    // Fixed lead cities in order, then optimize remaining outward (farthest stop last)
+    cityOrder: ['OMEGA','NORMAN PARK','ELLENTON','MOULTRIE','DOERUN'],
+    cityFirstCustomer: {},
+    sweepOutward: true   // after fixed stops, order remaining by distance from depot ascending so farthest is last
   }
 };
 
@@ -1212,8 +1218,39 @@ function constrainedRoute(stops, route) {
   if (free.length) {
     var fwg = free.filter(function(s){return s.lat&&s.lon;});
     var fng = free.filter(function(s){return !s.lat||!s.lon;});
-    var fopt = fwg.length > 1 ? opt2(nn(fwg, prevPos), prevPos) : fwg;
-    result = result.concat(fopt).concat(fng);
+
+    if (constraint.sweepOutward && fwg.length) {
+      // Sort cities by distance from DEPOT ascending so farthest city ends up last
+      // Use NN from prevPos seeded outward: re-sort city groups by avg distance from depot
+      var cityGroups = {};
+      fwg.forEach(function(s){
+        var city = (s.City||'UNKNOWN').toUpperCase().trim();
+        if (!cityGroups[city]) cityGroups[city] = [];
+        cityGroups[city].push(s);
+      });
+      // Sort cities by average distance from depot (nearest first → farthest last)
+      var sortedCities = Object.keys(cityGroups).sort(function(a,b){
+        var avgDistA = cityGroups[a].reduce(function(sum,s){
+          return sum + hav(DEPOT,{lat:s.lat,lon:s.lon});
+        },0) / cityGroups[a].length;
+        var avgDistB = cityGroups[b].reduce(function(sum,s){
+          return sum + hav(DEPOT,{lat:s.lat,lon:s.lon});
+        },0) / cityGroups[b].length;
+        return avgDistA - avgDistB; // ascending: nearest first, farthest last
+      });
+      // Within each city group, optimize by NN from previous position
+      sortedCities.forEach(function(city){
+        var grp = cityGroups[city];
+        var optimized = grp.length > 1 ? opt2(nn(grp, prevPos), prevPos) : grp;
+        result = result.concat(optimized);
+        var last = optimized[optimized.length-1];
+        if (last && last.lat && last.lon) prevPos = {lat:last.lat, lon:last.lon};
+      });
+      result = result.concat(fng);
+    } else {
+      var fopt = fwg.length > 1 ? opt2(nn(fwg, prevPos), prevPos) : fwg;
+      result = result.concat(fopt).concat(fng);
+    }
   }
 
   return result;
@@ -1728,6 +1765,7 @@ function constrainedRouteFromList(stops, route) {
   });
 
   var result = [];
+  var prevPos = DEPOT;
   cityOrder.forEach(function(city){
     var group = groups[city];
     if (!group || !group.length) return;
@@ -1736,12 +1774,41 @@ function constrainedRouteFromList(stops, route) {
       var fi = group.findIndex(function(c){ return String(c.CustomerNumber) === String(firstCust[city]); });
       if (fi !== -1) { forced = group[fi]; group.splice(fi, 1); }
     }
-    var prev = result.length ? result[result.length-1] : DEPOT;
-    var optimized = opt2(nn(group, prev), prev);
-    if (forced) result.push(forced);
-    result = result.concat(optimized);
+    var startPos = forced ? {lat:forced.lat,lon:forced.lon} : prevPos;
+    var optimized = opt2(nn(group, startPos), startPos);
+    var seg = (forced ? [forced] : []).concat(optimized);
+    result = result.concat(seg);
+    var last = seg[seg.length-1];
+    if (last && last.lat && last.lon) prevPos = {lat:last.lat, lon:last.lon};
   });
-  if (ungrouped.length) result = result.concat(opt2(nn(ungrouped, DEPOT), DEPOT));
+
+  if (ungrouped.length) {
+    var uwg = ungrouped.filter(function(c){return c.lat&&c.lon;});
+    var ung = ungrouped.filter(function(c){return !c.lat||!c.lon;});
+    if (constraints.sweepOutward && uwg.length) {
+      var cg = {};
+      uwg.forEach(function(s){
+        var city = (s.City||'?').toUpperCase().trim();
+        if (!cg[city]) cg[city] = [];
+        cg[city].push(s);
+      });
+      var sc = Object.keys(cg).sort(function(a,b){
+        var da = cg[a].reduce(function(s,x){return s+hav(DEPOT,{lat:x.lat,lon:x.lon});},0)/cg[a].length;
+        var db = cg[b].reduce(function(s,x){return s+hav(DEPOT,{lat:x.lat,lon:x.lon});},0)/cg[b].length;
+        return da - db;
+      });
+      sc.forEach(function(city){
+        var grp = cg[city];
+        var opt = grp.length > 1 ? opt2(nn(grp, prevPos), prevPos) : grp;
+        result = result.concat(opt);
+        var last = opt[opt.length-1];
+        if (last && last.lat && last.lon) prevPos = {lat:last.lat, lon:last.lon};
+      });
+      result = result.concat(ung);
+    } else {
+      result = result.concat(opt2(nn(uwg, prevPos), prevPos)).concat(ung);
+    }
+  }
   return result;
 }
 
