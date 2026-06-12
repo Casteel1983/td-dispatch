@@ -760,6 +760,10 @@ async function checkPwd(e) {
           style="background:#1b2035;border:1px solid #2d3655;border-radius:6px;color:#818cf8;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s">
           &#x1F4BE; Save &amp; Test Connection
         </button>
+        <button onclick="syncLocalToFirebase()"
+          style="margin-left:6px;background:#0d160d;border:1px solid #22c55e44;border-radius:6px;color:#22c55e;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s">
+          &#x2191; Push Local Logs to Cloud
+        </button>
         <div id="settings-fbstatus" style="font-size:11px;margin-top:8px;min-height:16px"></div>
       </div>
 
@@ -1678,6 +1682,20 @@ async function runAI(route, mode) {
       })
     });
 
+    if (!response.ok) {
+      var errData = null;
+      try { errData = await response.json(); } catch(e){}
+      var errMsg = errData && errData.error ? errData.error.message : ('HTTP ' + response.status);
+      var hint = '';
+      if (response.status === 401) hint = '<br><br>Your API key appears invalid or expired. Check it in <strong>⚙️ Settings</strong>.';
+      else if (response.status === 403) hint = '<br><br>This key may not have permission, or "anthropic-dangerous-direct-browser-access" needs to be enabled for browser use. Check console.anthropic.com.';
+      else if (response.status === 429) hint = '<br><br>Rate limit or credit balance issue — check your usage at console.anthropic.com.';
+      else if (response.status === 529) hint = '<br><br>Anthropic API is temporarily overloaded — try again in a moment.';
+      resultEl.innerHTML = '<div class="ai-response" style="color:#ef4444;padding:16px">' +
+        '⚠ <strong>API Error (' + response.status + ')</strong><br>' + errMsg + hint + '</div>';
+      return;
+    }
+
     var data = await response.json();
     var text = (data.content || []).filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('\n');
 
@@ -1698,7 +1716,15 @@ async function runAI(route, mode) {
       '<div class="ai-meta">Analyzed by Claude &middot; '+new Date().toLocaleTimeString()+'</div>';
 
   } catch(err) {
-    resultEl.innerHTML = '<div class="ai-response"><p style="color:#ef4444">Error: ' + err.message + '</p></div>';
+    var msg = err.message || String(err);
+    var extra = '';
+    if (msg.toLowerCase().indexOf('fetch') !== -1 || msg.toLowerCase().indexOf('network') !== -1) {
+      extra = '<br><br>This is often a CORS or network issue when calling the Anthropic API directly from a browser. ' +
+              'Make sure the request includes <code>anthropic-dangerous-direct-browser-access: true</code> (it does), ' +
+              'and that your network/firewall allows requests to api.anthropic.com.';
+    }
+    resultEl.innerHTML = '<div class="ai-response"><p style="color:#ef4444">⚠ Error: ' + msg + extra + '</p></div>';
+    console.error('AI Insights error:', err);
   }
 }
 
@@ -2500,6 +2526,40 @@ function openSettings() {
   document.getElementById('settings-fbsecret').value = localStorage.getItem('td_fb_secret') || '';
   document.getElementById('settings-fbstatus').textContent = '';
   document.getElementById('settings-overlay').classList.add('open');
+}
+
+async function syncLocalToFirebase() {
+  var st = document.getElementById('settings-fbstatus');
+  if (!getFBConfig()) {
+    st.textContent = 'Connect to Firebase first.';
+    st.style.color = '#f59e0b'; return;
+  }
+  st.textContent = '⏳ Syncing local logs to Firebase…'; st.style.color = '#6b7399';
+  var pushed = 0, skipped = 0;
+  for (var i = 0; i < RORDER.length; i++) {
+    var route = RORDER[i];
+    var key = 'td_log_' + route.replace(/ /g,'-');
+    try {
+      var local = localStorage.getItem(key);
+      if (!local) { skipped++; continue; }
+      var entries = JSON.parse(local);
+      if (!entries.length) { skipped++; continue; }
+      var resp = await fetch(fbPath(route), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: local
+      });
+      if (resp.ok) pushed++;
+      else skipped++;
+    } catch(e) { skipped++; }
+  }
+  if (pushed > 0) {
+    st.textContent = '✓ Pushed ' + pushed + ' route log' + (pushed !== 1 ? 's' : '') + ' to Firebase.' + (skipped ? ' ' + skipped + ' had no local data.' : '');
+    st.style.color = '#22c55e';
+  } else {
+    st.textContent = 'No local logs found to push — logs may already be in sync.';
+    st.style.color = '#6b7399';
+  }
 }
 
 async function saveFirebaseConfig() {
