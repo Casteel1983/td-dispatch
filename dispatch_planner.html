@@ -745,7 +745,7 @@ async function checkPwd(e) {
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid #262a3e">
         <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:10px">&#x1F4BE; Cloud Log Sync (Firebase)</div>
         <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:10px">
-          Connect to Firebase to sync route logs across all devices. <a href="https://console.firebase.google.com" target="_blank" style="color:#818cf8">Set up at console.firebase.google.com</a> — free tier is plenty.
+          This app is connected to the shared TD Dispatch database by default — every device automatically syncs route logs. No setup needed. Only change this if migrating to a new database.
         </div>
         <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">Database URL</label>
         <input id="settings-fburl" type="text"
@@ -998,15 +998,20 @@ async function calcSchedule(ordered, depTime) {
 
 // ── ROUTE LOG STORAGE ──
 // ── CLOUD LOG STORAGE (Firebase Realtime Database) ──
-// Falls back to localStorage if Firebase not configured
-var FB_URL  = '';  // set via Settings: e.g. https://your-project.firebaseio.com
-var FB_SECRET = ''; // Firebase database secret
+// Baked-in default so every device/browser auto-connects to the shared database.
+// Settings screen can still override this if you ever migrate to a new database.
+var DEFAULT_FB_URL = 'https://td-dispatch-b280b-default-rtdb.firebaseio.com';
+var FB_URL  = DEFAULT_FB_URL;
+var FB_SECRET = '';
 
 function getFBConfig() {
   try {
-    FB_URL    = localStorage.getItem('td_fb_url')    || '';
+    var savedUrl = localStorage.getItem('td_fb_url');
+    FB_URL    = (savedUrl && savedUrl.trim()) ? savedUrl.trim() : DEFAULT_FB_URL;
     FB_SECRET = localStorage.getItem('td_fb_secret') || '';
-  } catch(e){}
+  } catch(e) {
+    FB_URL = DEFAULT_FB_URL;
+  }
   return !!FB_URL;  // secret is optional
 }
 
@@ -2522,9 +2527,12 @@ function openSettings() {
   document.getElementById('settings-apikey').value = key;
   document.getElementById('settings-status').textContent = key ? '✓ API key is set' : '';
   document.getElementById('settings-status').style.color = '#22c55e';
-  document.getElementById('settings-fburl').value    = localStorage.getItem('td_fb_url')    || '';
+  var savedUrl = localStorage.getItem('td_fb_url') || '';
+  document.getElementById('settings-fburl').value    = savedUrl || DEFAULT_FB_URL;
   document.getElementById('settings-fbsecret').value = localStorage.getItem('td_fb_secret') || '';
-  document.getElementById('settings-fbstatus').textContent = '';
+  document.getElementById('settings-fbstatus').innerHTML =
+    '✓ Connected to shared database — logs sync automatically on this device.';
+  document.getElementById('settings-fbstatus').style.color = '#22c55e';
   document.getElementById('settings-overlay').classList.add('open');
 }
 
