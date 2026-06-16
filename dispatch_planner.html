@@ -1572,10 +1572,10 @@ function switchSubtab(route, which){
 }
 
 // ── AI INSIGHTS ──
-function buildRouteContext(route) {
+async function buildRouteContext(route) {
   var rid = route.replace(/ /g,'-');
   var allCustomers = ROUTES_DATA[route] || [];
-  var logs = loadLog(route);
+  var logs = await loadLog(route);
   var constraint = ROUTE_CONSTRAINTS[route];
   var instructions = loadInstructions(route);
 
@@ -1627,7 +1627,7 @@ async function runAI(route, mode) {
   var customInp = document.getElementById('ai-inp-'+rid);
   var color = RC[route] || '#6366f1';
 
-  var context = buildRouteContext(route);
+  var context = await buildRouteContext(route);
   var userQuestion = '';
 
   if (mode === 'current') {
@@ -1761,8 +1761,8 @@ function downloadCSV(filename, content){
   document.body.appendChild(a); a.click();
   setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},200);
 }
-function exportAllCSV(route){
-  var entries=loadLog(route);
+async function exportAllCSV(route){
+  var entries=await loadLog(route);
   if(!entries.length){alert('No log entries to export.');return;}
   var header='Route,Log Date,Departure,Return,Total Duration,Stop #,Customer #,Company Name,City,State,Expected Arrival,Expected Departure';
   var rows=[header];
@@ -1770,8 +1770,8 @@ function exportAllCSV(route){
   var today=new Date(); var ds=today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
   downloadCSV(route.replace(/ /g,'-')+'_Log_'+ds+'.csv', rows.join('\n'));
 }
-function exportEntryCSV(route, idx){
-  var entries=loadLog(route); var entry=entries[idx];
+async function exportEntryCSV(route, idx){
+  var entries=await loadLog(route); var entry=entries[idx];
   if(!entry){alert('Entry not found.');return;}
   var header='Route,Log Date,Departure,Return,Total Duration,Stop #,Customer #,Company Name,City,State,Expected Arrival,Expected Departure';
   var rows=[header].concat(entryToCSVRows(entry,route));
@@ -1820,16 +1820,16 @@ function buildPrintHTML(route, entries){
     +'<div class="subtitle">Tire Distributors &mdash; Tifton, GA &nbsp;&nbsp; Exported: '+fmtDateLabel(new Date())+'</div>'
     +rows+'</body></html>';
 }
-function exportAllPrint(route){
-  var entries=loadLog(route);
+async function exportAllPrint(route){
+  var entries=await loadLog(route);
   if(!entries.length){alert('No log entries to print.');return;}
   var w=window.open('','_blank','width=900,height=700');
   w.document.write(buildPrintHTML(route,entries));
   w.document.close();
   setTimeout(function(){w.focus();w.print();},400);
 }
-function exportEntryPrint(route, idx){
-  var entries=loadLog(route); var entry=entries[idx];
+async function exportEntryPrint(route, idx){
+  var entries=await loadLog(route); var entry=entries[idx];
   if(!entry){alert('Entry not found.');return;}
   var w=window.open('','_blank','width=900,height=700');
   w.document.write(buildPrintHTML(route,[entry]));
