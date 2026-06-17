@@ -1307,6 +1307,11 @@ function nn(pts,dep){var u=pts.slice(),cur=dep,r=[];while(u.length){var bi=0,bd=
 function opt2(r,dep){if(r.length<3) return r;var b=r.slice(),imp=true;while(imp){imp=false;for(var i=0;i<b.length-1;i++){for(var j=i+1;j<b.length;j++){var A=i===0?dep:b[i-1],B=b[i],C=b[j],D=j===b.length-1?dep:b[j+1];if(hav(A,B)+hav(C,D)>hav(A,C)+hav(B,D)+0.01){var seg=b.slice(i,j+1).reverse();b=b.slice(0,i).concat(seg).concat(b.slice(j+1));imp=true;}}}}return b;}
 function dist(pts,dep){if(!pts.length) return 0;var d=hav(dep,pts[0]);for(var i=0;i<pts.length-1;i++) d+=hav(pts[i],pts[i+1]);return d+hav(pts[pts.length-1],dep);}
 
+// ── COMPASS BEARING (for grounding AI Insights in real geography, not guesswork) ──
+function bearingDeg(a,b){var phi1=a.lat*Math.PI/180,phi2=b.lat*Math.PI/180,dLambda=(b.lon-a.lon)*Math.PI/180;var y=Math.sin(dLambda)*Math.cos(phi2);var x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLambda);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+function compassLabel(deg){var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return dirs[Math.round(deg/22.5)%16];}
+function geoTag(pt,from){from=from||DEPOT;if(!pt.lat||!pt.lon) return '';return hav(from,pt).toFixed(1)+'mi '+compassLabel(bearingDeg(from,pt));}
+
 // ── GET STOPS ──
 function getStops(route){
   var rid=route.replace(/ /g,'-'),stops=[],n=slotCount[route];
@@ -1584,12 +1589,50 @@ async function buildRouteContext(route) {
   var constraint = ROUTE_CONSTRAINTS[route];
   var instructions = loadInstructions(route);
 
-  // Current planned stops
+  // Current planned stops, with running geography so backtracking is visible as data, not a guess
   var currentStops = getStops(route);
+  var currentStopsText = 'None entered yet';
+  if (currentStops.length) {
+    var prevPt = DEPOT;
+    currentStopsText = currentStops.map(function(c,i){
+      var legTxt = '';
+      if (c.lat && c.lon) {
+        var legMi = hav(prevPt, c).toFixed(1);
+        var legDir = compassLabel(bearingDeg(prevPt, c));
+        legTxt = ' — '+geoTag(c)+' of depot; this leg '+legMi+'mi '+legDir+' from previous stop';
+        prevPt = {lat:c.lat, lon:c.lon};
+      } else {
+        legTxt = ' — no GPS on file';
+      }
+      return (i+1)+'. '+c.CompanyName+' ('+c.City+')'+legTxt;
+    }).join('\n');
+  }
 
-  // Summary of all customers on this route
+  // Summary of all customers on this route — each tagged with real distance/bearing from depot
+  // so the AI isn't guessing where "ELLENTON" or "NORMAN PARK" are relative to Tifton.
   var customerSummary = allCustomers.map(function(c){
-    return '#'+c.CustomerNumber+' '+c.CompanyName+' ('+c.City+', '+c.State+')';
+    var geo = (c.lat && c.lon) ? ' — '+geoTag(c)+' of depot' : ' — no GPS on file';
+    return '#'+c.CustomerNumber+' '+c.CompanyName+' ('+c.City+', '+c.State+')'+geo;
+  }).join('\n');
+
+  // City-level geography reference: every distinct city on this route, sorted nearest→farthest
+  // from the depot, with compass direction. This is the ground truth for "is this stop out of order".
+  var cityAgg = {};
+  allCustomers.forEach(function(c){
+    if (!c.lat || !c.lon) return;
+    var key = (c.City||'?')+', '+(c.State||'');
+    if (!cityAgg[key]) cityAgg[key] = {lats:[], lons:[]};
+    cityAgg[key].lats.push(c.lat);
+    cityAgg[key].lons.push(c.lon);
+  });
+  var cityGeoList = Object.keys(cityAgg).map(function(key){
+    var lats = cityAgg[key].lats, lons = cityAgg[key].lons;
+    var avg = {lat: lats.reduce(function(a,b){return a+b;},0)/lats.length,
+               lon: lons.reduce(function(a,b){return a+b;},0)/lons.length};
+    return {key:key, dist:hav(DEPOT,avg), dir:compassLabel(bearingDeg(DEPOT,avg))};
+  }).sort(function(a,b){ return a.dist - b.dist; });
+  var cityGeoText = cityGeoList.map(function(c){
+    return c.key+': '+c.dist.toFixed(1)+' mi '+c.dir+' of depot';
   }).join('\n');
 
   // Recent log entries (last 10)
@@ -1615,11 +1658,14 @@ async function buildRouteContext(route) {
     'FORCED FIRST STOPS: '+forcedStops,
     'SPECIAL INSTRUCTIONS: '+(instructions||'None'),
     '',
+    'GEOGRAPHY REFERENCE — distinct cities on this route, sorted nearest to farthest from depot (USE THIS, do not rely on assumed knowledge of these towns):',
+    cityGeoText || 'No GPS data available',
+    '',
     'ALL CUSTOMERS ON THIS ROUTE ('+allCustomers.length+' total):',
     customerSummary,
     '',
     'CURRENT PLANNED STOPS TODAY ('+currentStops.length+'):',
-    currentStops.length ? currentStops.map(function(c,i){ return (i+1)+'. '+c.CompanyName+' ('+c.City+')'; }).join('\n') : 'None entered yet',
+    currentStopsText,
     '',
     'ROUTE LOG HISTORY ('+logs.length+' total runs, showing last 10):',
     recentLogs || 'No history yet'
@@ -1652,7 +1698,10 @@ async function runAI(route, mode) {
 
   var systemPrompt = 'You are a logistics optimization expert for Tire Distributors, a tire wholesale distributor based in Tifton, GA. ' +
     'You analyze delivery routes to find patterns, reduce costs, minimize drive time, and maximize efficiency. ' +
-    'You have deep knowledge of Georgia geography. Be specific and actionable. ' +
+    'The route data below includes a GEOGRAPHY REFERENCE table and per-stop distance/compass-bearing tags computed directly from GPS coordinates. ' +
+    'These numbers are ground truth — always defer to them over any general assumption you might have about where a small Georgia/Florida/Alabama town is located. ' +
+    'Never state a direction (e.g. "north", "southwest") for a stop unless it matches the bearing given in the data; if a bearing isn\'t provided for a stop, say so rather than guessing. ' +
+    'Be specific and actionable. ' +
     'Use section headers (###) for organization. Keep responses focused and practical. ' +
     'Average stop time is 8 minutes. Average driving speed is 45 mph. ' +
     'The goal is to save time, fuel, and cost while delivering as much as possible.';
