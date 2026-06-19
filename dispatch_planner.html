@@ -725,23 +725,12 @@ async function checkPwd(e) {
     </div>
     <div class="up-body">
       <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:8px">
-        &#x1F916; Anthropic API Key (for AI Insights)
+        &#x1F916; AI Insights
       </label>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="settings-apikey" type="password"
-          style="flex:1;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:10px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:13px;outline:none"
-          placeholder="sk-ant-api03-..."
-          onfocus="this.type='text'" onblur="this.type='password'">
-        <button onclick="saveSettings()"
-          style="background:#818cf8;border:none;border-radius:6px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px 18px;cursor:pointer">
-          Save
-        </button>
+      <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:14px">
+        AI Insights now runs through a shared, centrally managed proxy — there's nothing to set up here.
+        It works the same way for everyone, on every device and browser, automatically.
       </div>
-      <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:12px">
-        Your key is stored only in this browser — never sent to GitHub or shared with anyone.
-        Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:#818cf8">console.anthropic.com</a>.
-      </div>
-      <div id="settings-status" style="font-size:12px;min-height:18px"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid #262a3e">
         <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:10px">&#x1F4BE; Cloud Log Sync (Firebase)</div>
         <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:10px">
@@ -819,6 +808,13 @@ var CENTERS     = {"Route 1": [31.293, -82.348], "Local": [31.629, -83.753], "Ro
 var RORDER      = ["Route 1", "Local", "Route 3", "Route 4", "Route 5", "Route 6", "Route 7", "Route 8"];
 var DEPOT = {lat: 31.407812, lon: -83.489437, name: 'Tire Distributors — Tifton'};
 var DEPOT_ADDRESS = '31 S Magnolia Rd, Tifton, GA 31794';
+
+// AI Insights now routes through a Cloudflare Worker proxy instead of a per-browser API key.
+// This means nobody — including your boss, other testers, or you on a new device — ever
+// needs to paste an API key. Fill these in once after deploying the Worker (see deploy notes),
+// then re-upload this file. It then works for everyone, everywhere, with zero setup per user.
+var AI_PROXY_URL    = 'https://empty-sound-3d6f.lhyarbrough.workers.dev';
+var AI_PROXY_SECRET = '!adj1K30540R22';
 
 // ── ROUTE CONSTRAINTS ──
 // cityOrder: cities must be visited in this sequence (skipped if no stops)
@@ -1710,27 +1706,22 @@ async function runAI(route, mode) {
     { role: 'user', content: 'Here is the route data:\n\n' + context + '\n\n---\n\nQuestion: ' + userQuestion }
   ];
 
-  var apiKey = getApiKey();
-  if (!apiKey) {
+  if (!AI_PROXY_URL || AI_PROXY_URL.indexOf('PASTE_YOUR') === 0) {
     resultEl.innerHTML = '<div class="ai-response" style="color:#f59e0b;padding:16px">' +
-      '⚙️ <strong>API key not set.</strong><br><br>' +
-      'Click the <strong>⚙️ Settings</strong> button in the top-right corner and paste your Anthropic API key to enable AI Insights.' +
+      '⚙️ <strong>AI Insights proxy not configured yet.</strong><br><br>' +
+      'Set <code>AI_PROXY_URL</code> and <code>AI_PROXY_SECRET</code> near the top of the file after deploying the Cloudflare Worker.' +
       '</div>';
     return;
   }
 
   try {
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
+    var response = await fetch(AI_PROXY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'X-Proxy-Secret': AI_PROXY_SECRET
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
         system: systemPrompt,
         messages: messages
       })
@@ -1739,11 +1730,11 @@ async function runAI(route, mode) {
     if (!response.ok) {
       var errData = null;
       try { errData = await response.json(); } catch(e){}
-      var errMsg = errData && errData.error ? errData.error.message : ('HTTP ' + response.status);
+      var errMsg = (errData && (errData.error && errData.error.message || errData.error)) || ('HTTP ' + response.status);
       var hint = '';
-      if (response.status === 401) hint = '<br><br>Your API key appears invalid or expired. Check it in <strong>⚙️ Settings</strong>.';
-      else if (response.status === 403) hint = '<br><br>This key may not have permission, or "anthropic-dangerous-direct-browser-access" needs to be enabled for browser use. Check console.anthropic.com.';
-      else if (response.status === 429) hint = '<br><br>Rate limit or credit balance issue — check your usage at console.anthropic.com.';
+      if (response.status === 401) hint = '<br><br>The proxy rejected this request — AI_PROXY_SECRET in this file may not match the Worker\'s PROXY_SECRET.';
+      else if (response.status === 403) hint = '<br><br>The proxy rejected this request\'s origin. Check ALLOWED_ORIGIN on the Worker matches where this app is hosted.';
+      else if (response.status === 429) hint = '<br><br>Daily AI Insights limit reached, or the Anthropic account behind the proxy is low on credit.';
       else if (response.status === 529) hint = '<br><br>Anthropic API is temporarily overloaded — try again in a moment.';
       resultEl.innerHTML = '<div class="ai-response" style="color:#ef4444;padding:16px">' +
         '⚠ <strong>API Error (' + response.status + ')</strong><br>' + errMsg + hint + '</div>';
@@ -1773,9 +1764,7 @@ async function runAI(route, mode) {
     var msg = err.message || String(err);
     var extra = '';
     if (msg.toLowerCase().indexOf('fetch') !== -1 || msg.toLowerCase().indexOf('network') !== -1) {
-      extra = '<br><br>This is often a CORS or network issue when calling the Anthropic API directly from a browser. ' +
-              'Make sure the request includes <code>anthropic-dangerous-direct-browser-access: true</code> (it does), ' +
-              'and that your network/firewall allows requests to api.anthropic.com.';
+      extra = '<br><br>Couldn\'t reach the AI proxy. Double-check AI_PROXY_URL is the correct Worker URL and that the Worker is deployed.';
     }
     resultEl.innerHTML = '<div class="ai-response"><p style="color:#ef4444">⚠ Error: ' + msg + extra + '</p></div>';
     console.error('AI Insights error:', err);
@@ -2572,10 +2561,6 @@ function dirInstruction(type, modifier, name) {
 
 // ── SETTINGS ──
 function openSettings() {
-  var key = localStorage.getItem('td_anthropic_key') || '';
-  document.getElementById('settings-apikey').value = key;
-  document.getElementById('settings-status').textContent = key ? '✓ API key is set' : '';
-  document.getElementById('settings-status').style.color = '#22c55e';
   var savedUrl = localStorage.getItem('td_fb_url') || '';
   document.getElementById('settings-fburl').value    = savedUrl || DEFAULT_FB_URL;
   document.getElementById('settings-fbsecret').value = localStorage.getItem('td_fb_secret') || '';
@@ -2663,23 +2648,6 @@ async function saveFirebaseConfig() {
 }
 function closeSettings() {
   document.getElementById('settings-overlay').classList.remove('open');
-}
-function saveSettings() {
-  var key = document.getElementById('settings-apikey').value.trim();
-  var st  = document.getElementById('settings-status');
-  if (!key) {
-    localStorage.removeItem('td_anthropic_key');
-    st.textContent = 'Key cleared.'; st.style.color = '#6b7399'; return;
-  }
-  if (!key.startsWith('sk-ant-')) {
-    st.textContent = '⚠ Key should start with sk-ant-…'; st.style.color = '#f59e0b'; return;
-  }
-  localStorage.setItem('td_anthropic_key', key);
-  st.textContent = '✓ Saved! AI Insights is ready to use.'; st.style.color = '#22c55e';
-}
-
-function getApiKey() {
-  return localStorage.getItem('td_anthropic_key') || '';
 }
 
 // ── DRIVER / TRUCK ──
