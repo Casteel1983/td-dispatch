@@ -224,6 +224,41 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .entry-export:hover{color:#22c55e;border-color:#22c55e}
 .entry-export.pr:hover{color:#3b82f6;border-color:#3b82f6}
 
+/* ── LOG RUN CARDS (compact clickable list) ── */
+.log-run-card{background:#13161f;border:1px solid #262a3e;border-radius:8px;padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:border-color .15s,background .1s;user-select:none;flex-shrink:0}
+.log-run-card:hover{border-color:#818cf8;background:#16182a}
+.log-run-num{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1px;color:#3a4060;width:24px;text-align:center;flex-shrink:0}
+.log-run-date{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#e2e6f3;flex:1}
+.log-run-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1}
+.log-run-badge{font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.log-run-badge.driver{background:#1a1b2e;color:#818cf8;border:1px solid #262a3e}
+.log-run-badge.truck{background:#1a1b2e;color:#f59e0b;border:1px solid #262a3e}
+.log-run-meta{font-size:10px;color:#6b7399;text-align:right;line-height:1.6;flex-shrink:0;font-family:'Barlow Condensed',sans-serif}
+.log-run-arrow{color:#3a4060;font-size:12px;flex-shrink:0}
+.log-run-card:hover .log-run-arrow{color:#818cf8}
+.log-archive-btn{background:none;border:1px dashed #262a3e;border-radius:8px;color:#3a4060;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px;cursor:pointer;transition:all .15s;width:100%;flex-shrink:0}
+.log-archive-btn:hover{border-color:#6b7399;color:#6b7399}
+
+/* ── LOG DETAIL MODAL ── */
+#log-detail-overlay,#log-archive-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px}
+#log-detail-overlay.open,#log-archive-overlay.open{display:flex}
+.log-detail-modal{background:#13161f;border:1px solid #262a3e;border-radius:12px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.log-archive-modal{background:#13161f;border:1px solid #262a3e;border-radius:12px;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.ldm-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #262a3e;gap:10px;flex-shrink:0}
+.ldm-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:#e2e6f3;flex:1}
+.ldm-route-chip{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;padding:3px 10px;border-radius:20px;border:1px solid currentColor;flex-shrink:0}
+.ldm-close{background:none;border:none;color:#6b7399;font-size:18px;cursor:pointer;padding:0 2px;transition:color .15s;flex-shrink:0}
+.ldm-close:hover{color:#e2e6f3}
+.ldm-body{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#262a3e transparent}
+.ldm-body::-webkit-scrollbar{width:3px}
+.ldm-body::-webkit-scrollbar-thumb{background:#262a3e}
+.ldm-actions{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #262a3e;flex-shrink:0;flex-wrap:wrap}
+.ldm-act-btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 13px;border-radius:5px;cursor:pointer;border:1px solid #262a3e;background:#1b1e2d;color:#6b7399;transition:all .15s;white-space:nowrap}
+.ldm-act-btn:hover{border-color:#22c55e;color:#22c55e}
+.ldm-act-btn.dir{border-color:#818cf8;color:#818cf8}
+.ldm-act-btn.dir:hover{background:#1a1b2e}
+.ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
+
 /* ── AI INSIGHTS PANE ── */
 .ai-pane{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
 .ai-context-wrap{padding:12px 14px;border-bottom:1px solid #262a3e;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
@@ -725,12 +760,23 @@ async function checkPwd(e) {
     </div>
     <div class="up-body">
       <label style="display:block;font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:8px">
-        &#x1F916; AI Insights
+        &#x1F916; Anthropic API Key (for AI Insights)
       </label>
-      <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:14px">
-        AI Insights now runs through a shared, centrally managed proxy — there's nothing to set up here.
-        It works the same way for everyone, on every device and browser, automatically.
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="settings-apikey" type="password"
+          style="flex:1;background:#0d0f18;border:1px solid #262a3e;border-radius:6px;padding:10px 12px;color:#e2e6f3;font-family:'Barlow',sans-serif;font-size:13px;outline:none"
+          placeholder="sk-ant-api03-..."
+          onfocus="this.type='text'" onblur="this.type='password'">
+        <button onclick="saveSettings()"
+          style="background:#818cf8;border:none;border-radius:6px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px 18px;cursor:pointer">
+          Save
+        </button>
       </div>
+      <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:12px">
+        Your key is stored only in this browser — never sent to GitHub or shared with anyone.
+        Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:#818cf8">console.anthropic.com</a>.
+      </div>
+      <div id="settings-status" style="font-size:12px;min-height:18px"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid #262a3e">
         <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7399;margin-bottom:10px">&#x1F4BE; Cloud Log Sync (Firebase)</div>
         <div style="font-size:11px;color:#3a4060;line-height:1.6;margin-bottom:10px">
@@ -808,13 +854,6 @@ var CENTERS     = {"Route 1": [31.293, -82.348], "Local": [31.629, -83.753], "Ro
 var RORDER      = ["Route 1", "Local", "Route 3", "Route 4", "Route 5", "Route 6", "Route 7", "Route 8"];
 var DEPOT = {lat: 31.407812, lon: -83.489437, name: 'Tire Distributors — Tifton'};
 var DEPOT_ADDRESS = '31 S Magnolia Rd, Tifton, GA 31794';
-
-// AI Insights now routes through a Cloudflare Worker proxy instead of a per-browser API key.
-// This means nobody — including your boss, other testers, or you on a new device — ever
-// needs to paste an API key. Fill these in once after deploying the Worker (see deploy notes),
-// then re-upload this file. It then works for everyone, everywhere, with zero setup per user.
-var AI_PROXY_URL    = 'https://empty-sound-3d6f.lhyarbrough.workers.dev';
-var AI_PROXY_SECRET = '!adj1K30540R22';
 
 // ── ROUTE CONSTRAINTS ──
 // cityOrder: cities must be visited in this sequence (skipped if no stops)
@@ -1077,80 +1116,62 @@ function renderLog(route) {
 
 function renderLogEntries(route, entries) {
   var rid = route.replace(/ /g,'-');
-  // entries is already loaded and passed in — do NOT call loadLog() here
   var badge = document.getElementById('logbadge-'+rid);
   if (badge) { badge.textContent = entries.length; badge.className = 'log-badge'+(entries.length?' has-logs':''); }
   var pane = document.getElementById('log-'+rid);
   if (!pane) return;
   var empty = document.getElementById('logempty-'+rid);
-  if (!entries.length) { if (empty) empty.style.display=''; pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics').forEach(function(e){e.remove();}); return; }
+  if (!entries.length) { if (empty) empty.style.display=''; pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics,.log-run-card,.log-archive-btn').forEach(function(e){e.remove();}); return; }
   if (empty) empty.style.display = 'none';
-  pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics').forEach(function(e){e.remove();});
+  pane.querySelectorAll('.log-entry,.log-toolbar,.log-analytics,.log-run-card,.log-archive-btn').forEach(function(e){e.remove();});
+
   // Export toolbar
-  var toolbar=document.createElement('div');
-  toolbar.className='log-toolbar';
-  toolbar.innerHTML=
+  var toolbar = document.createElement('div');
+  toolbar.className = 'log-toolbar';
+  toolbar.innerHTML =
     '<button class="export-btn" onclick="exportAllCSV(\''+route+'\')">&#x2193; Export All (CSV)</button>'+
     '<button class="export-btn pr" onclick="exportAllPrint(\''+route+'\')">&#x1F5A8; Print All</button>';
   pane.insertBefore(toolbar, empty);
 
-  // ── ANALYTICS PANEL ──
+  // Analytics panel
   var analytics = document.createElement('div');
   analytics.className = 'log-analytics';
   analytics.innerHTML = buildAnalytics(route, entries, RC[route]);
   pane.insertBefore(analytics, empty);
 
-  var color=RC[route];
-  entries.forEach(function(entry,idx){
-    var el=document.createElement('div');
-    el.className='log-entry';
-    var depDate=new Date(entry.departureTime);
-    var retDate=new Date(entry.returnTime);
-    var stopsWithGeo=entry.stops.filter(function(s){return s.arrivalTime;});
-    var stopsNoGeo=entry.stops.filter(function(s){return !s.arrivalTime;});
-    // Header
-    var driverStr = entry.driver ? '<span style="color:#818cf8;font-size:10px;font-weight:700;margin-left:8px">👤 '+entry.driver+'</span>' : '';
-    var truckStr  = entry.truck  ? '<span style="color:#f59e0b;font-size:10px;font-weight:700;margin-left:6px">🚚 '+entry.truck+'</span>'   : '';
-    var headHtml='<div class="log-entry-head">'
-      +'<div style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;" onclick="toggleLog(this.parentElement)">'
-      +'<div class="log-date">'+fmtDateLabel(new Date(entry.timestamp))+'</div>'+driverStr+truckStr
-      +'</div>'
-      +'<div class="log-meta" onclick="toggleLog(this.parentElement)">'+entry.stops.length+' stops<br>'+fmtDuration(entry.totalMin)+'</div>'
-      +'<button class="entry-export" onclick="exportEntryCSV(\''+route+'\','+idx+')" title="Download CSV">CSV</button>'
-      +'<button class="entry-export pr" onclick="exportEntryPrint(\''+route+'\','+idx+')" title="Print this run">&#x1F5A8;</button>'
-      +'<button class="dir-log-btn" onclick="openDirectionsFromLog(\''+encodeURIComponent(JSON.stringify(entry))+'\')" title="View turn-by-turn directions">&#x1F5FA; Directions</button>'
-      +'<span class="log-chevron" onclick="toggleLog(this.parentElement)">&#x25BE;</span>'
-      +'</div>';
-    // Summary stats
-    var summaryHtml='<div class="log-summary">'
-      +'<div class="log-stat"><div class="log-stat-val">'+fmtTime(depDate)+'</div><div class="log-stat-lbl">Departure</div></div>'
-      +'<div class="log-stat"><div class="log-stat-val">'+fmtTime(retDate)+'</div><div class="log-stat-lbl">Return</div></div>'
-      +'<div class="log-stat"><div class="log-stat-val">'+fmtDuration(entry.totalMin)+'</div><div class="log-stat-lbl">Total Time</div></div>'
-      +'<div class="log-stat"><div class="log-stat-val">'+entry.stops.length+'</div><div class="log-stat-lbl">Stops</div></div>'
-      +'</div>';
-    // Stop rows
-    var stopsHtml='<div class="log-stops">';
-    entry.stops.forEach(function(s,si){
-      var timeStr=s.arrivalTime?fmtTime(new Date(s.arrivalTime)):'--:--';
-      var sname = s.CompanyName || s.name || '';
-      var scity = s.City || s.city || '';
-      stopsHtml+='<div class="log-stop-row">'
-        +'<div class="ls-n" style="color:'+color+'">'+(si+1)+'</div>'
-        +'<div class="ls-name">'+sname+'</div>'
-        +'<div class="ls-city">'+scity+'</div>'
-        +'<div class="ls-time">'+timeStr+'</div>'
-        +'</div>';
-    });
-    stopsHtml+='</div>';
-    var returnHtml='<div class="log-return-row">'
-      +'<span class="log-return-lbl">&#x1F3ED; Return to Tifton</span>'
-      +'<span class="log-return-time">'+fmtTime(retDate)+'</span>'
-      +'</div>';
-    el.innerHTML=headHtml+'<div class="log-body">'+summaryHtml+stopsHtml+returnHtml+'</div>';
-    // First entry open by default
-    if(idx===0){ el.classList.add('open'); }
+  var color = RC[route] || '#818cf8';
+  var recent = entries.slice(0, 10);
+
+  // Compact clickable run cards — last 10
+  recent.forEach(function(entry, idx) {
+    var el = document.createElement('div');
+    el.className = 'log-run-card';
+    var driverB = entry.driver ? '<span class="log-run-badge driver">&#x1F464; '+entry.driver+'</span>' : '';
+    var truckB  = entry.truck  ? '<span class="log-run-badge truck">&#x1F69A; '+entry.truck+'</span>'   : '';
+    el.innerHTML =
+      '<div class="log-run-num" style="color:'+color+'">'+(idx+1)+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="log-run-date">'+fmtDateLabel(new Date(entry.timestamp))+'</div>'+
+        '<div class="log-run-badges" style="margin-top:3px">'+driverB+truckB+'</div>'+
+      '</div>'+
+      '<div class="log-run-meta">'+entry.stops.length+' stops<br>'+fmtDuration(entry.totalMin)+'</div>'+
+      '<div class="log-run-arrow">&#x276F;</div>';
+    // capture idx for closure
+    (function(capturedIdx) {
+      el.addEventListener('click', function() { openLogDetail(route, capturedIdx, entries); });
+    })(idx);
     pane.appendChild(el);
   });
+
+  // Archive button if there are more than 10 runs
+  if (entries.length > 10) {
+    var archBtn = document.createElement('button');
+    archBtn.className = 'log-archive-btn';
+    archBtn.textContent = '&#x1F4C2; View Archive (' + (entries.length - 10) + ' older runs)';
+    archBtn.innerHTML = '&#x1F4C2; View Archive — ' + (entries.length - 10) + ' older run' + (entries.length - 10 !== 1 ? 's' : '');
+    archBtn.addEventListener('click', function() { openLogArchive(route); });
+    pane.appendChild(archBtn);
+  }
 }
 
 // ── ROUTE ANALYTICS ──
@@ -1302,11 +1323,6 @@ function hav(a,b){var R=3958.8,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lon-a.lon)*M
 function nn(pts,dep){var u=pts.slice(),cur=dep,r=[];while(u.length){var bi=0,bd=Infinity;u.forEach(function(p,i){var d=hav(cur,p);if(d<bd){bd=d;bi=i;}});r.push(u[bi]);cur=u[bi];u.splice(bi,1);}return r;}
 function opt2(r,dep){if(r.length<3) return r;var b=r.slice(),imp=true;while(imp){imp=false;for(var i=0;i<b.length-1;i++){for(var j=i+1;j<b.length;j++){var A=i===0?dep:b[i-1],B=b[i],C=b[j],D=j===b.length-1?dep:b[j+1];if(hav(A,B)+hav(C,D)>hav(A,C)+hav(B,D)+0.01){var seg=b.slice(i,j+1).reverse();b=b.slice(0,i).concat(seg).concat(b.slice(j+1));imp=true;}}}}return b;}
 function dist(pts,dep){if(!pts.length) return 0;var d=hav(dep,pts[0]);for(var i=0;i<pts.length-1;i++) d+=hav(pts[i],pts[i+1]);return d+hav(pts[pts.length-1],dep);}
-
-// ── COMPASS BEARING (for grounding AI Insights in real geography, not guesswork) ──
-function bearingDeg(a,b){var phi1=a.lat*Math.PI/180,phi2=b.lat*Math.PI/180,dLambda=(b.lon-a.lon)*Math.PI/180;var y=Math.sin(dLambda)*Math.cos(phi2);var x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLambda);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
-function compassLabel(deg){var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return dirs[Math.round(deg/22.5)%16];}
-function geoTag(pt,from){from=from||DEPOT;if(!pt.lat||!pt.lon) return '';return hav(from,pt).toFixed(1)+'mi '+compassLabel(bearingDeg(from,pt));}
 
 // ── GET STOPS ──
 function getStops(route){
@@ -1585,50 +1601,12 @@ async function buildRouteContext(route) {
   var constraint = ROUTE_CONSTRAINTS[route];
   var instructions = loadInstructions(route);
 
-  // Current planned stops, with running geography so backtracking is visible as data, not a guess
+  // Current planned stops
   var currentStops = getStops(route);
-  var currentStopsText = 'None entered yet';
-  if (currentStops.length) {
-    var prevPt = DEPOT;
-    currentStopsText = currentStops.map(function(c,i){
-      var legTxt = '';
-      if (c.lat && c.lon) {
-        var legMi = hav(prevPt, c).toFixed(1);
-        var legDir = compassLabel(bearingDeg(prevPt, c));
-        legTxt = ' — '+geoTag(c)+' of depot; this leg '+legMi+'mi '+legDir+' from previous stop';
-        prevPt = {lat:c.lat, lon:c.lon};
-      } else {
-        legTxt = ' — no GPS on file';
-      }
-      return (i+1)+'. '+c.CompanyName+' ('+c.City+')'+legTxt;
-    }).join('\n');
-  }
 
-  // Summary of all customers on this route — each tagged with real distance/bearing from depot
-  // so the AI isn't guessing where "ELLENTON" or "NORMAN PARK" are relative to Tifton.
+  // Summary of all customers on this route
   var customerSummary = allCustomers.map(function(c){
-    var geo = (c.lat && c.lon) ? ' — '+geoTag(c)+' of depot' : ' — no GPS on file';
-    return '#'+c.CustomerNumber+' '+c.CompanyName+' ('+c.City+', '+c.State+')'+geo;
-  }).join('\n');
-
-  // City-level geography reference: every distinct city on this route, sorted nearest→farthest
-  // from the depot, with compass direction. This is the ground truth for "is this stop out of order".
-  var cityAgg = {};
-  allCustomers.forEach(function(c){
-    if (!c.lat || !c.lon) return;
-    var key = (c.City||'?')+', '+(c.State||'');
-    if (!cityAgg[key]) cityAgg[key] = {lats:[], lons:[]};
-    cityAgg[key].lats.push(c.lat);
-    cityAgg[key].lons.push(c.lon);
-  });
-  var cityGeoList = Object.keys(cityAgg).map(function(key){
-    var lats = cityAgg[key].lats, lons = cityAgg[key].lons;
-    var avg = {lat: lats.reduce(function(a,b){return a+b;},0)/lats.length,
-               lon: lons.reduce(function(a,b){return a+b;},0)/lons.length};
-    return {key:key, dist:hav(DEPOT,avg), dir:compassLabel(bearingDeg(DEPOT,avg))};
-  }).sort(function(a,b){ return a.dist - b.dist; });
-  var cityGeoText = cityGeoList.map(function(c){
-    return c.key+': '+c.dist.toFixed(1)+' mi '+c.dir+' of depot';
+    return '#'+c.CustomerNumber+' '+c.CompanyName+' ('+c.City+', '+c.State+')';
   }).join('\n');
 
   // Recent log entries (last 10)
@@ -1654,14 +1632,11 @@ async function buildRouteContext(route) {
     'FORCED FIRST STOPS: '+forcedStops,
     'SPECIAL INSTRUCTIONS: '+(instructions||'None'),
     '',
-    'GEOGRAPHY REFERENCE — distinct cities on this route, sorted nearest to farthest from depot (USE THIS, do not rely on assumed knowledge of these towns):',
-    cityGeoText || 'No GPS data available',
-    '',
     'ALL CUSTOMERS ON THIS ROUTE ('+allCustomers.length+' total):',
     customerSummary,
     '',
     'CURRENT PLANNED STOPS TODAY ('+currentStops.length+'):',
-    currentStopsText,
+    currentStops.length ? currentStops.map(function(c,i){ return (i+1)+'. '+c.CompanyName+' ('+c.City+')'; }).join('\n') : 'None entered yet',
     '',
     'ROUTE LOG HISTORY ('+logs.length+' total runs, showing last 10):',
     recentLogs || 'No history yet'
@@ -1694,10 +1669,7 @@ async function runAI(route, mode) {
 
   var systemPrompt = 'You are a logistics optimization expert for Tire Distributors, a tire wholesale distributor based in Tifton, GA. ' +
     'You analyze delivery routes to find patterns, reduce costs, minimize drive time, and maximize efficiency. ' +
-    'The route data below includes a GEOGRAPHY REFERENCE table and per-stop distance/compass-bearing tags computed directly from GPS coordinates. ' +
-    'These numbers are ground truth — always defer to them over any general assumption you might have about where a small Georgia/Florida/Alabama town is located. ' +
-    'Never state a direction (e.g. "north", "southwest") for a stop unless it matches the bearing given in the data; if a bearing isn\'t provided for a stop, say so rather than guessing. ' +
-    'Be specific and actionable. ' +
+    'You have deep knowledge of Georgia geography. Be specific and actionable. ' +
     'Use section headers (###) for organization. Keep responses focused and practical. ' +
     'Average stop time is 8 minutes. Average driving speed is 45 mph. ' +
     'The goal is to save time, fuel, and cost while delivering as much as possible.';
@@ -1706,22 +1678,27 @@ async function runAI(route, mode) {
     { role: 'user', content: 'Here is the route data:\n\n' + context + '\n\n---\n\nQuestion: ' + userQuestion }
   ];
 
-  if (!AI_PROXY_URL || AI_PROXY_URL.indexOf('PASTE_YOUR') === 0) {
+  var apiKey = getApiKey();
+  if (!apiKey) {
     resultEl.innerHTML = '<div class="ai-response" style="color:#f59e0b;padding:16px">' +
-      '⚙️ <strong>AI Insights proxy not configured yet.</strong><br><br>' +
-      'Set <code>AI_PROXY_URL</code> and <code>AI_PROXY_SECRET</code> near the top of the file after deploying the Cloudflare Worker.' +
+      '⚙️ <strong>API key not set.</strong><br><br>' +
+      'Click the <strong>⚙️ Settings</strong> button in the top-right corner and paste your Anthropic API key to enable AI Insights.' +
       '</div>';
     return;
   }
 
   try {
-    var response = await fetch(AI_PROXY_URL, {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Proxy-Secret': AI_PROXY_SECRET
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
         system: systemPrompt,
         messages: messages
       })
@@ -1730,11 +1707,11 @@ async function runAI(route, mode) {
     if (!response.ok) {
       var errData = null;
       try { errData = await response.json(); } catch(e){}
-      var errMsg = (errData && (errData.error && errData.error.message || errData.error)) || ('HTTP ' + response.status);
+      var errMsg = errData && errData.error ? errData.error.message : ('HTTP ' + response.status);
       var hint = '';
-      if (response.status === 401) hint = '<br><br>The proxy rejected this request — AI_PROXY_SECRET in this file may not match the Worker\'s PROXY_SECRET.';
-      else if (response.status === 403) hint = '<br><br>The proxy rejected this request\'s origin. Check ALLOWED_ORIGIN on the Worker matches where this app is hosted.';
-      else if (response.status === 429) hint = '<br><br>Daily AI Insights limit reached, or the Anthropic account behind the proxy is low on credit.';
+      if (response.status === 401) hint = '<br><br>Your API key appears invalid or expired. Check it in <strong>⚙️ Settings</strong>.';
+      else if (response.status === 403) hint = '<br><br>This key may not have permission, or "anthropic-dangerous-direct-browser-access" needs to be enabled for browser use. Check console.anthropic.com.';
+      else if (response.status === 429) hint = '<br><br>Rate limit or credit balance issue — check your usage at console.anthropic.com.';
       else if (response.status === 529) hint = '<br><br>Anthropic API is temporarily overloaded — try again in a moment.';
       resultEl.innerHTML = '<div class="ai-response" style="color:#ef4444;padding:16px">' +
         '⚠ <strong>API Error (' + response.status + ')</strong><br>' + errMsg + hint + '</div>';
@@ -1764,7 +1741,9 @@ async function runAI(route, mode) {
     var msg = err.message || String(err);
     var extra = '';
     if (msg.toLowerCase().indexOf('fetch') !== -1 || msg.toLowerCase().indexOf('network') !== -1) {
-      extra = '<br><br>Couldn\'t reach the AI proxy. Double-check AI_PROXY_URL is the correct Worker URL and that the Worker is deployed.';
+      extra = '<br><br>This is often a CORS or network issue when calling the Anthropic API directly from a browser. ' +
+              'Make sure the request includes <code>anthropic-dangerous-direct-browser-access: true</code> (it does), ' +
+              'and that your network/firewall allows requests to api.anthropic.com.';
     }
     resultEl.innerHTML = '<div class="ai-response"><p style="color:#ef4444">⚠ Error: ' + msg + extra + '</p></div>';
     console.error('AI Insights error:', err);
@@ -2561,6 +2540,10 @@ function dirInstruction(type, modifier, name) {
 
 // ── SETTINGS ──
 function openSettings() {
+  var key = localStorage.getItem('td_anthropic_key') || '';
+  document.getElementById('settings-apikey').value = key;
+  document.getElementById('settings-status').textContent = key ? '✓ API key is set' : '';
+  document.getElementById('settings-status').style.color = '#22c55e';
   var savedUrl = localStorage.getItem('td_fb_url') || '';
   document.getElementById('settings-fburl').value    = savedUrl || DEFAULT_FB_URL;
   document.getElementById('settings-fbsecret').value = localStorage.getItem('td_fb_secret') || '';
@@ -2648,6 +2631,23 @@ async function saveFirebaseConfig() {
 }
 function closeSettings() {
   document.getElementById('settings-overlay').classList.remove('open');
+}
+function saveSettings() {
+  var key = document.getElementById('settings-apikey').value.trim();
+  var st  = document.getElementById('settings-status');
+  if (!key) {
+    localStorage.removeItem('td_anthropic_key');
+    st.textContent = 'Key cleared.'; st.style.color = '#6b7399'; return;
+  }
+  if (!key.startsWith('sk-ant-')) {
+    st.textContent = '⚠ Key should start with sk-ant-…'; st.style.color = '#f59e0b'; return;
+  }
+  localStorage.setItem('td_anthropic_key', key);
+  st.textContent = '✓ Saved! AI Insights is ready to use.'; st.style.color = '#22c55e';
+}
+
+function getApiKey() {
+  return localStorage.getItem('td_anthropic_key') || '';
 }
 
 // ── DRIVER / TRUCK ──
@@ -3070,6 +3070,204 @@ window.addEventListener('load',function(){
   showSection(activeRoute);
   drawRefMap(activeRoute);
 });
+
+// ── LOG DETAIL MODAL ──────────────────────────────────────────────────────────
+var _logDetailEntry = null;
+var _logDetailRoute = null;
+var _logDetailIdx   = null;
+
+function openLogDetail(route, idx, entries) {
+  _logDetailEntry = entries[idx];
+  _logDetailRoute = route;
+  _logDetailIdx   = idx;
+  var entry = _logDetailEntry;
+  var color = RC[route] || '#818cf8';
+  var depDate = new Date(entry.departureTime);
+  var retDate = new Date(entry.returnTime);
+
+  var modal = document.getElementById('log-detail-overlay');
+  var chip  = document.getElementById('ldm-route-chip');
+  var title = document.getElementById('ldm-title');
+  chip.textContent = route;
+  chip.style.color = color;
+  chip.style.borderColor = color;
+  title.textContent = fmtDateLabel(new Date(entry.timestamp));
+
+  // Summary
+  var driverBadge = entry.driver ? '<span class="log-run-badge driver" style="font-size:10px;padding:3px 9px">&#x1F464; '+entry.driver+'</span>' : '';
+  var truckBadge  = entry.truck  ? '<span class="log-run-badge truck" style="font-size:10px;padding:3px 9px">&#x1F69A; '+entry.truck+'</span>'   : '';
+  var summaryHtml =
+    '<div style="padding:12px 16px;border-bottom:1px solid #262a3e;display:flex;flex-wrap:wrap;gap:6px">' +
+    driverBadge + truckBadge + '</div>' +
+    '<div class="log-summary">' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtTime(depDate)+'</div><div class="log-stat-lbl">Departure</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtTime(retDate)+'</div><div class="log-stat-lbl">Return</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtDuration(entry.totalMin)+'</div><div class="log-stat-lbl">Total Time</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+entry.stops.length+'</div><div class="log-stat-lbl">Stops</div></div>' +
+    '</div>';
+
+  // Stops list
+  var stopsHtml = '<div class="log-stops">';
+  entry.stops.forEach(function(s, si) {
+    var timeStr = s.arrivalTime ? fmtTime(new Date(s.arrivalTime)) : '--:--';
+    var sname = s.CompanyName || s.name || '';
+    var scity = s.City || s.city || '';
+    stopsHtml += '<div class="log-stop-row">' +
+      '<div class="ls-n" style="color:'+color+'">'+(si+1)+'</div>' +
+      '<div class="ls-name">'+sname+'</div>' +
+      '<div class="ls-city">'+scity+'</div>' +
+      '<div class="ls-time">'+timeStr+'</div>' +
+      '</div>';
+  });
+  stopsHtml += '</div>';
+
+  var returnHtml = '<div class="log-return-row">' +
+    '<span class="log-return-lbl">&#x1F3ED; Return to Tifton</span>' +
+    '<span class="log-return-time">'+fmtTime(retDate)+'</span></div>';
+
+  document.getElementById('ldm-body').innerHTML = summaryHtml + stopsHtml + returnHtml;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLogDetail() {
+  document.getElementById('log-detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function ldmExportCSV() {
+  if (_logDetailRoute !== null && _logDetailIdx !== null) exportEntryCSV(_logDetailRoute, _logDetailIdx);
+}
+function ldmPrint() {
+  if (_logDetailRoute !== null && _logDetailIdx !== null) exportEntryPrint(_logDetailRoute, _logDetailIdx);
+}
+function ldmDirections() {
+  if (_logDetailEntry) openDirectionsFromLog(encodeURIComponent(JSON.stringify(_logDetailEntry)));
+}
+
+// ── LOG ARCHIVE MODAL ─────────────────────────────────────────────────────────
+var _archiveRoute   = null;
+var _archiveEntries = null;
+
+async function openLogArchive(route) {
+  _archiveRoute = route;
+  var all = await loadLog(route);
+  _archiveEntries = all.slice(10); // everything beyond the first 10
+  var color = RC[route] || '#818cf8';
+
+  var modal = document.getElementById('log-archive-overlay');
+  document.getElementById('lam-title').textContent = route + ' — Archive (' + _archiveEntries.length + ' runs)';
+
+  var html = '';
+  if (!_archiveEntries.length) {
+    html = '<div style="text-align:center;color:#3a4060;padding:40px 20px;font-size:12px">No archived runs yet.</div>';
+  } else {
+    _archiveEntries.forEach(function(entry, idx) {
+      var driverB = entry.driver ? '<span class="log-run-badge driver">&#x1F464; '+entry.driver+'</span>' : '';
+      var truckB  = entry.truck  ? '<span class="log-run-badge truck">&#x1F69A; '+entry.truck+'</span>'   : '';
+      html += '<div class="log-run-card" onclick="openArchiveDetail('+idx+')" style="margin:0 12px 8px;width:calc(100% - 24px)">' +
+        '<div class="log-run-num" style="color:'+color+'">'+(idx+11)+'</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="log-run-date">'+fmtDateLabel(new Date(entry.timestamp))+'</div>' +
+          '<div class="log-run-badges" style="margin-top:3px">'+driverB+truckB+'</div>' +
+        '</div>' +
+        '<div class="log-run-meta">'+entry.stops.length+' stops<br>'+fmtDuration(entry.totalMin)+'</div>' +
+        '<div class="log-run-arrow">&#x276F;</div>' +
+        '</div>';
+    });
+  }
+  document.getElementById('lam-body').innerHTML = html;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function openArchiveDetail(archiveIdx) {
+  // Temporarily inject archive entry into the detail modal
+  _logDetailEntry = _archiveEntries[archiveIdx];
+  _logDetailRoute = _archiveRoute;
+  _logDetailIdx   = archiveIdx + 10;
+  var entry = _logDetailEntry;
+  var color = RC[_archiveRoute] || '#818cf8';
+  var depDate = new Date(entry.departureTime);
+  var retDate = new Date(entry.returnTime);
+
+  var chip  = document.getElementById('ldm-route-chip');
+  var title = document.getElementById('ldm-title');
+  chip.textContent = _archiveRoute;
+  chip.style.color = color;
+  chip.style.borderColor = color;
+  title.textContent = fmtDateLabel(new Date(entry.timestamp)) + ' (archived)';
+
+  var driverBadge = entry.driver ? '<span class="log-run-badge driver" style="font-size:10px;padding:3px 9px">&#x1F464; '+entry.driver+'</span>' : '';
+  var truckBadge  = entry.truck  ? '<span class="log-run-badge truck" style="font-size:10px;padding:3px 9px">&#x1F69A; '+entry.truck+'</span>'   : '';
+  var summaryHtml =
+    '<div style="padding:12px 16px;border-bottom:1px solid #262a3e;display:flex;flex-wrap:wrap;gap:6px">' +
+    driverBadge + truckBadge + '</div>' +
+    '<div class="log-summary">' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtTime(depDate)+'</div><div class="log-stat-lbl">Departure</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtTime(retDate)+'</div><div class="log-stat-lbl">Return</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+fmtDuration(entry.totalMin)+'</div><div class="log-stat-lbl">Total Time</div></div>' +
+    '<div class="log-stat"><div class="log-stat-val">'+entry.stops.length+'</div><div class="log-stat-lbl">Stops</div></div>' +
+    '</div>';
+
+  var stopsHtml = '<div class="log-stops">';
+  entry.stops.forEach(function(s, si) {
+    var timeStr = s.arrivalTime ? fmtTime(new Date(s.arrivalTime)) : '--:--';
+    stopsHtml += '<div class="log-stop-row">' +
+      '<div class="ls-n" style="color:'+color+'">'+(si+1)+'</div>' +
+      '<div class="ls-name">'+(s.CompanyName||s.name||'')+'</div>' +
+      '<div class="ls-city">'+(s.City||s.city||'')+'</div>' +
+      '<div class="ls-time">'+timeStr+'</div></div>';
+  });
+  stopsHtml += '</div>';
+
+  var returnHtml = '<div class="log-return-row">' +
+    '<span class="log-return-lbl">&#x1F3ED; Return to Tifton</span>' +
+    '<span class="log-return-time">'+fmtTime(retDate)+'</span></div>';
+
+  document.getElementById('ldm-body').innerHTML = summaryHtml + stopsHtml + returnHtml;
+  document.getElementById('log-detail-overlay').classList.add('open');
+}
+
+function closeLogArchive() {
+  document.getElementById('log-archive-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modals on overlay click
+document.addEventListener('click', function(e) {
+  if (e.target.id === 'log-detail-overlay') closeLogDetail();
+  if (e.target.id === 'log-archive-overlay') closeLogArchive();
+});
 </script>
+
+<!-- LOG DETAIL MODAL -->
+<div id="log-detail-overlay">
+  <div class="log-detail-modal">
+    <div class="ldm-header">
+      <div class="ldm-title" id="ldm-title">Run Details</div>
+      <span class="ldm-route-chip" id="ldm-route-chip"></span>
+      <button class="ldm-close" onclick="closeLogDetail()">&#x2715;</button>
+    </div>
+    <div class="ldm-actions">
+      <button class="ldm-act-btn" onclick="ldmExportCSV()">&#x2193; CSV</button>
+      <button class="ldm-act-btn pr" onclick="ldmPrint()">&#x1F5A8; Print</button>
+      <button class="ldm-act-btn dir" onclick="ldmDirections()">&#x1F5FA; Turn-by-Turn</button>
+    </div>
+    <div class="ldm-body" id="ldm-body"></div>
+  </div>
+</div>
+
+<!-- LOG ARCHIVE MODAL -->
+<div id="log-archive-overlay">
+  <div class="log-archive-modal">
+    <div class="ldm-header">
+      <div class="ldm-title" id="lam-title">Archive</div>
+      <button class="ldm-close" onclick="closeLogArchive()">&#x2715;</button>
+    </div>
+    <div class="ldm-body" id="lam-body" style="padding-top:12px;padding-bottom:12px"></div>
+  </div>
+</div>
+
 </body>
 </html>
