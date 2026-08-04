@@ -259,6 +259,22 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .ldm-act-btn.dir:hover{background:#1a1b2e}
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
 
+/* ── ANALYSIS TAB ── */
+.an-mode-opt{cursor:pointer;display:block;flex:1;min-width:200px}
+.an-mode-opt input{display:none}
+.an-mode-card{background:#0d0f18;border:1px solid #262a3e;border-radius:8px;padding:12px 14px;transition:border-color .15s}
+.an-mode-opt input:checked + .an-mode-card{border-color:#818cf8;background:#13162a}
+.an-mode-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#e2e6f3;margin-bottom:4px}
+.an-mode-desc{font-size:11px;color:#6b7399;line-height:1.5}
+.an-summary-cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.an-card{background:#13161f;border:1px solid #262a3e;border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center}
+.an-card-val{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:24px;color:#818cf8;line-height:1}
+.an-card-lbl{font-size:10px;color:#6b7399;letter-spacing:.5px;margin-top:4px}
+.an-table{width:100%;border-collapse:collapse;font-size:11px;font-family:'Barlow Condensed',sans-serif;min-width:700px}
+.an-table th{text-align:left;padding:8px 10px;border-bottom:2px solid #262a3e;color:#6b7399;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-size:10px;background:#0d0f18;position:sticky;top:0}
+.an-table td{padding:7px 10px;border-bottom:1px solid #1a1d2e;color:#c4c9e2;vertical-align:middle}
+.an-table tr:hover td{background:#13161f}
+
 /* ── AI INSIGHTS PANE ── */
 .ai-pane{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
 .ai-context-wrap{padding:12px 14px;border-bottom:1px solid #262a3e;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
@@ -854,6 +870,13 @@ var CENTERS     = {"Route 1": [31.293, -82.348], "Local": [31.629, -83.753], "Ro
 var RORDER      = ["Route 1", "Local", "Route 3", "Route 4", "Route 5", "Route 6", "Route 7", "Route 8"];
 var DEPOT = {lat: 31.407812, lon: -83.489437, name: 'Tire Distributors — Tifton'};
 var DEPOT_ADDRESS = '31 S Magnolia Rd, Tifton, GA 31794';
+
+var AI_PROXY_URL    = 'https://empty-sound-3d6f.lhyarbrough.workers.dev';
+var AI_PROXY_SECRET = '!adj1K30540R22';
+
+function bearingDeg(a,b){var phi1=a.lat*Math.PI/180,phi2=b.lat*Math.PI/180,dLambda=(b.lon-a.lon)*Math.PI/180;var y=Math.sin(dLambda)*Math.cos(phi2);var x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLambda);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+function compassLabel(deg){var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return dirs[Math.round(deg/22.5)%16];}
+function geoTag(pt,from){from=from||DEPOT;if(!pt.lat||!pt.lon) return '';return hav(from,pt).toFixed(1)+'mi '+compassLabel(bearingDeg(from,pt));}
 
 // ── ROUTE CONSTRAINTS ──
 // cityOrder: cities must be visited in this sequence (skipped if no stops)
@@ -1688,13 +1711,11 @@ async function runAI(route, mode) {
   }
 
   try {
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
+    var response = await fetch(AI_PROXY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'X-Proxy-Secret': AI_PROXY_SECRET
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
@@ -1881,6 +1902,22 @@ function buildTabs(){
     });
     bar.appendChild(btn);
   });
+  // Analysis tab
+  var abtn = document.createElement('button');
+  abtn.className = 'tbtn';
+  abtn.id = 'tbtn-analysis';
+  abtn.innerHTML = '&#x1F4CA; Analysis';
+  abtn.style.borderBottomColor = 'transparent';
+  abtn.addEventListener('click', function(){
+    activeRoute = '__analysis__';
+    document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active');b.style.borderBottomColor='transparent';b.style.color='';});
+    abtn.classList.add('active');
+    abtn.style.borderBottomColor = '#818cf8';
+    abtn.style.color = '#fff';
+    document.querySelectorAll('.psec').forEach(function(s){s.classList.remove('active');});
+    document.getElementById('sec-Analysis').classList.add('active');
+  });
+  bar.appendChild(abtn);
 }
 
 // ── CONFIRM MAP ──
@@ -3266,6 +3303,334 @@ document.addEventListener('click', function(e) {
       <button class="ldm-close" onclick="closeLogArchive()">&#x2715;</button>
     </div>
     <div class="ldm-body" id="lam-body" style="padding-top:12px;padding-bottom:12px"></div>
+  </div>
+</div>
+
+<script>
+// ── ANALYSIS TAB ─────────────────────────────────────────────────────────────
+var _analysisResults   = [];
+var _analysisRunning   = false;
+var _analysisCancelled = false;
+var _osrmCache         = {};
+
+var SCHED_DEP = {
+  'Route 1': [360],
+  'Route 3': [435, 735],
+  'Route 4': [435, 735],
+  'Route 5': [435, 735],
+  'Route 6': [495, 735],
+  'Route 7': [495, 735],
+  'Route 8': [495, 735]
+};
+var END_OF_DAY = 17 * 60;
+var STOP_MIN   = 8;
+var OSRM_BASE  = 'https://router.project-osrm.org';
+
+function minsToTime(m) {
+  m = Math.round(m); var h = Math.floor(m/60)%24, min = m%60;
+  var ampm = h>=12?'PM':'AM', h12=h>12?h-12:(h===0?12:h);
+  return h12+':'+(min<10?'0':'')+min+' '+ampm;
+}
+
+async function osrmTrip(stops) {
+  var pts = [{lat:DEPOT.lat,lon:DEPOT.lon}].concat(stops).concat([{lat:DEPOT.lat,lon:DEPOT.lon}]);
+  if (!pts.every(function(p){return p.lat&&p.lon;})) return null;
+  var coords = pts.map(function(p){return p.lon+','+p.lat;}).join(';');
+  if (_osrmCache[coords]) return _osrmCache[coords];
+  try {
+    var resp = await fetch(OSRM_BASE+'/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last&overview=false');
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    if (!data.trips||!data.trips[0]) return null;
+    var t = data.trips[0];
+    var result = {distanceMi: t.distance/1609.34, durationMin: t.duration/60};
+    _osrmCache[coords] = result;
+    return result;
+  } catch(e){ return null; }
+}
+
+function nnOptimize(stops) {
+  var u=stops.filter(function(s){return s.lat&&s.lon;}), noGps=stops.filter(function(s){return !s.lat||!s.lon;});
+  var cur={lat:DEPOT.lat,lon:DEPOT.lon}, result=[];
+  while(u.length){var bi=0,bd=Infinity;u.forEach(function(s,i){var d=hav(cur,s);if(d<bd){bd=d;bi=i;}});result.push(u[bi]);cur=u[bi];u.splice(bi,1);}
+  return result.concat(noGps);
+}
+
+function enrichStops(stops) {
+  var allC = null;
+  return stops.map(function(s) {
+    if (!allC) allC = Object.values(ROUTES_DATA).flat();
+    var cust = allC.find(function(c){return String(c.CustomerNumber)===String(s.CustomerNumber);});
+    return {
+      CustomerNumber: s.CustomerNumber,
+      CompanyName: s.CompanyName||s.name||'',
+      City: s.City||s.city||'',
+      lat: (cust&&cust.lat)||s.lat||null,
+      lon: (cust&&cust.lon)||s.lon||null
+    };
+  }).filter(function(s){return s.CustomerNumber;});
+}
+
+async function solveVRP(allStops) {
+  var remaining = allStops.filter(function(s){return s.lat&&s.lon;})
+    .sort(function(a,b){return hav(DEPOT,a)-hav(DEPOT,b);});
+  var noGps = allStops.filter(function(s){return !s.lat||!s.lon;});
+  var trucks = [];
+  while(remaining.length) {
+    var truck=[], cur={lat:DEPOT.lat,lon:DEPOT.lon}, timeMin=435;
+    while(remaining.length) {
+      var bi=0,bd=Infinity;
+      remaining.forEach(function(s,i){var d=hav(cur,s);if(d<bd){bd=d;bi=i;}});
+      var cand=remaining[bi];
+      var legMin=hav(cur,cand)/45*60, retMin=hav(cand,DEPOT)/45*60;
+      if(timeMin+legMin+STOP_MIN+retMin>END_OF_DAY) break;
+      truck.push(cand); timeMin+=legMin+STOP_MIN; cur={lat:cand.lat,lon:cand.lon};
+      remaining.splice(bi,1);
+    }
+    if(!truck.length){remaining.shift();continue;}
+    var trip=await osrmTrip(truck);
+    var distMi=trip?trip.distanceMi:hav(DEPOT,cur)*2;
+    var driveMin=trip?trip.durationMin:distMi/45*60;
+    var stopMin=truck.length*STOP_MIN, totalMin=driveMin+stopMin;
+    var returnMin=435+totalMin;
+    trucks.push({stops:truck,distMi:distMi,driveMin:driveMin,stopMin:stopMin,
+      totalMin:totalMin,returnMin:returnMin,returnTimeStr:minsToTime(returnMin),late:returnMin>END_OF_DAY});
+    await new Promise(function(r){setTimeout(r,30);});
+  }
+  // Tack no-GPS stops onto last truck
+  if(noGps.length&&trucks.length) trucks[trucks.length-1].stops=trucks[trucks.length-1].stops.concat(noGps);
+  return trucks;
+}
+
+function setAnProgress(pct, label) {
+  document.getElementById('an-progress-bar').style.width = Math.min(pct,100)+'%';
+  document.getElementById('an-progress-label').textContent = label;
+}
+
+async function runAnalysis() {
+  if (_analysisRunning) return;
+  _analysisRunning=true; _analysisCancelled=false; _analysisResults=[];
+  var mode=document.querySelector('input[name="an-mode"]:checked').value;
+  var ROUTES_TO_ANALYZE=['Route 1','Route 3','Route 4','Route 5','Route 6','Route 7','Route 8'];
+  document.getElementById('an-run-btn').style.display='none';
+  document.getElementById('an-cancel-btn').style.display='inline-block';
+  document.getElementById('an-progress-wrap').style.display='block';
+  document.getElementById('an-results').innerHTML='';
+
+  // Load all logs
+  setAnProgress(2,'Loading run history from Firebase...');
+  var allLogs={}, totalRuns=0;
+  for(var ri=0;ri<ROUTES_TO_ANALYZE.length;ri++){
+    allLogs[ROUTES_TO_ANALYZE[ri]]=await loadLog(ROUTES_TO_ANALYZE[ri]);
+    totalRuns+=allLogs[ROUTES_TO_ANALYZE[ri]].length;
+  }
+  if(!totalRuns){
+    document.getElementById('an-progress-wrap').style.display='none';
+    document.getElementById('an-run-btn').style.display='inline-block';
+    document.getElementById('an-cancel-btn').style.display='none';
+    document.getElementById('an-results').innerHTML='<div style="text-align:center;color:#6b7399;padding:40px">No logged runs found. Run the historical import first.</div>';
+    _analysisRunning=false; return;
+  }
+  setAnProgress(6,'Loaded '+totalRuns+' runs — starting OSRM processing...');
+
+  if(mode==='vrp'){
+    // Build per-day stop pools
+    var dayMap={};
+    ROUTES_TO_ANALYZE.forEach(function(r){
+      allLogs[r].forEach(function(entry){
+        var date=entry.timestamp.slice(0,10);
+        if(!dayMap[date]) dayMap[date]=[];
+        enrichStops(entry.stops).forEach(function(s){
+          s.originalRoute=r; dayMap[date].push(s);
+        });
+      });
+    });
+    var dates=Object.keys(dayMap).sort();
+    for(var di=0;di<dates.length;di++){
+      if(_analysisCancelled) break;
+      var date=dates[di];
+      setAnProgress(8+(di/dates.length)*88,'VRP '+date+' ('+dayMap[date].length+' stops)...');
+      var trucks=await solveVRP(dayMap[date]);
+      _analysisResults.push({date:date,mode:'vrp',trucks:trucks,totalStops:dayMap[date].length,
+        trucksNeeded:trucks.length,totalMiles:trucks.reduce(function(s,t){return s+t.distMi;},0),
+        anyLate:trucks.some(function(t){return t.late;})});
+    }
+  } else {
+    var processed=0;
+    for(var ri2=0;ri2<ROUTES_TO_ANALYZE.length;ri2++){
+      var route=ROUTES_TO_ANALYZE[ri2];
+      var entries=allLogs[route];
+      for(var ei=0;ei<entries.length;ei++){
+        if(_analysisCancelled) break;
+        var entry=entries[ei];
+        setAnProgress(6+(processed/totalRuns)*90,route+' '+entry.timestamp.slice(0,10)+' ['+( entry.runPeriod||'AM')+']');
+        var stops=enrichStops(entry.stops);
+        if(!stops.length){processed++;continue;}
+        var ordered=(mode==='optimized')?nnOptimize(stops):stops;
+        var trip=await osrmTrip(ordered);
+        var distMi=trip?trip.distanceMi:null;
+        var driveMin=trip?trip.durationMin:null;
+        var stopMin=stops.length*STOP_MIN;
+        var totalMin=driveMin!==null?driveMin+stopMin:null;
+        var schedArr=SCHED_DEP[route]||[435];
+        var period=entry.runPeriod||'AM';
+        var schedMin=(period==='PM'&&schedArr.length>1)?schedArr[1]:schedArr[0];
+        var returnMin=schedMin+(totalMin||0);
+        _analysisResults.push({date:entry.timestamp.slice(0,10),route:route,period:period,mode:mode,
+          stops:stops.length,distMi:distMi,driveMin:driveMin,stopMin:stopMin,totalMin:totalMin,
+          schedDepTime:minsToTime(schedMin),returnTime:totalMin?minsToTime(returnMin):'—',
+          returnMin:returnMin,late5pm:totalMin?returnMin>END_OF_DAY:null,
+          driver:entry.driver||'',truck:entry.truck||''});
+        processed++;
+        if(processed%5===0) await new Promise(function(r){setTimeout(r,10);});
+      }
+      if(_analysisCancelled) break;
+    }
+  }
+
+  setAnProgress(100,'Complete — '+_analysisResults.length+' records processed.');
+  setTimeout(function(){
+    document.getElementById('an-progress-wrap').style.display='none';
+    document.getElementById('an-run-btn').style.display='inline-block';
+    document.getElementById('an-cancel-btn').style.display='none';
+  }, 800);
+  renderAnalysisResults(mode);
+  _analysisRunning=false;
+}
+
+function cancelAnalysis(){_analysisCancelled=true;document.getElementById('an-progress-label').textContent='Cancelling...';}
+
+function renderAnalysisResults(mode){
+  var div=document.getElementById('an-results');
+  if(!_analysisResults.length){div.innerHTML='<div style="text-align:center;color:#6b7399;padding:40px">No results.</div>';return;}
+  var html='';
+  if(mode==='vrp'){
+    var avgT=(_analysisResults.reduce(function(s,d){return s+d.trucksNeeded;},0)/_analysisResults.length).toFixed(1);
+    var maxT=Math.max.apply(null,_analysisResults.map(function(d){return d.trucksNeeded;}));
+    var minT=Math.min.apply(null,_analysisResults.map(function(d){return d.trucksNeeded;}));
+    var lateD=_analysisResults.filter(function(d){return d.anyLate;}).length;
+    var totMi=_analysisResults.reduce(function(s,d){return s+d.totalMiles;},0);
+    html='<div class="an-summary-cards">'+
+      '<div class="an-card"><div class="an-card-val">'+avgT+'</div><div class="an-card-lbl">Avg Trucks/Day</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+maxT+'</div><div class="an-card-lbl">Peak Day Trucks</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+minT+'</div><div class="an-card-lbl">Lightest Day Trucks</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+lateD+'</div><div class="an-card-lbl">Days w/ Late Return</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+Math.round(totMi).toLocaleString()+'</div><div class="an-card-lbl">Total Miles</div></div>'+
+      '</div><div style="overflow-x:auto"><table class="an-table"><thead><tr><th>Date</th><th>Stops</th><th>Trucks Needed</th><th>Total Miles</th><th>Late?</th></tr></thead><tbody>';
+    _analysisResults.forEach(function(d){
+      html+='<tr><td>'+d.date+'</td><td>'+d.totalStops+'</td>'+
+        '<td><strong style="color:#818cf8">'+d.trucksNeeded+'</strong></td>'+
+        '<td>'+(d.totalMiles?d.totalMiles.toFixed(1):'—')+'</td>'+
+        '<td>'+(d.anyLate?'<span style="color:#ef4444">⚠ Yes</span>':'<span style="color:#22c55e">✓ No</span>')+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+  } else {
+    var totMi2=_analysisResults.reduce(function(s,r){return s+(r.distMi||0);},0);
+    var withMi=_analysisResults.filter(function(r){return r.distMi;}).length;
+    var avgMi=withMi?totMi2/withMi:0;
+    var lateC=_analysisResults.filter(function(r){return r.late5pm;}).length;
+    var avgSt=(_analysisResults.reduce(function(s,r){return s+r.stops;},0)/_analysisResults.length).toFixed(1);
+    html='<div class="an-summary-cards">'+
+      '<div class="an-card"><div class="an-card-val">'+_analysisResults.length+'</div><div class="an-card-lbl">Runs</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+Math.round(totMi2).toLocaleString()+'</div><div class="an-card-lbl">Total Miles</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+avgMi.toFixed(1)+'</div><div class="an-card-lbl">Avg Miles/Run</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+avgSt+'</div><div class="an-card-lbl">Avg Stops/Run</div></div>'+
+      '<div class="an-card"><div class="an-card-val">'+((lateC/_analysisResults.length)*100).toFixed(0)+'%</div><div class="an-card-lbl">Back After 5PM</div></div>'+
+      '</div><div style="overflow-x:auto"><table class="an-table"><thead><tr>'+
+      '<th>Date</th><th>Route</th><th>Period</th><th>Stops</th><th>Miles</th><th>Drive Min</th><th>Stop Min</th><th>Total Min</th><th>Sched Dep</th><th>Est Return</th><th>By 5PM?</th></tr></thead><tbody>';
+    _analysisResults.forEach(function(r){
+      var col=RC[r.route]||'#818cf8';
+      var flag=r.late5pm===null?'—':r.late5pm?'<span style="color:#ef4444">⚠ Late</span>':'<span style="color:#22c55e">✓ Yes</span>';
+      html+='<tr><td>'+r.date+'</td><td><span style="color:'+col+';font-weight:700">'+r.route+'</span></td>'+
+        '<td>'+r.period+'</td><td>'+r.stops+'</td>'+
+        '<td>'+(r.distMi?r.distMi.toFixed(1):'—')+'</td>'+
+        '<td>'+(r.driveMin?Math.round(r.driveMin):'—')+'</td>'+
+        '<td>'+r.stopMin+'</td><td>'+(r.totalMin?Math.round(r.totalMin):'—')+'</td>'+
+        '<td>'+r.schedDepTime+'</td><td>'+r.returnTime+'</td><td>'+flag+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  div.innerHTML=html;
+}
+
+function exportAnalysisCSV(){
+  if(!_analysisResults.length){alert('Run analysis first.');return;}
+  var mode=_analysisResults[0].mode, headers, rows;
+  if(mode==='vrp'){
+    headers=['Date','TotalStops','TrucksNeeded','TotalMiles','AnyLate'];
+    rows=_analysisResults.map(function(d){return[d.date,d.totalStops,d.trucksNeeded,d.totalMiles?d.totalMiles.toFixed(2):'',d.anyLate?'Yes':'No'].join(',');});
+  } else {
+    headers=['Date','Route','Period','Mode','Stops','DriveMiles','DriveMin','StopMin','TotalMin','SchedDep','EstReturn','LateReturn'];
+    rows=_analysisResults.map(function(r){return[r.date,r.route,r.period,r.mode,r.stops,r.distMi?r.distMi.toFixed(2):'',r.driveMin?Math.round(r.driveMin):'',r.stopMin,r.totalMin?Math.round(r.totalMin):'',r.schedDepTime,r.returnTime,r.late5pm===null?'':(r.late5pm?'Yes':'No')].join(',');});
+  }
+  var csv=[headers.join(',')].concat(rows).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='td_analysis_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+async function pushAnalysisToFirebase(){
+  if(!_analysisResults.length){alert('Run analysis first.');return;}
+  var fbUrl=localStorage.getItem('td_fb_url')||'https://td-dispatch-b280b-default-rtdb.firebaseio.com';
+  var btn=document.getElementById('an-push-btn');
+  btn.disabled=true; btn.textContent='⏳ Pushing...';
+  try {
+    var byDate={};
+    _analysisResults.forEach(function(r){
+      var d=(r.date||'').replace(/-/g,'');
+      if(!byDate[d]) byDate[d]=[];
+      byDate[d].push(r);
+    });
+    var resp=await fetch(fbUrl+'/td_analysis/route_runs.json',{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({generated:new Date().toISOString(),mode:_analysisResults[0].mode||'constrained',days:byDate,
+        summary:{totalRuns:_analysisResults.length,totalMiles:_analysisResults.reduce(function(s,r){return s+(r.distMi||r.totalMiles||0);},0).toFixed(1)}})
+    });
+    if(resp.ok){
+      btn.textContent='✓ Pushed!'; btn.style.color='#22c55e'; btn.style.borderColor='#22c55e';
+      setTimeout(function(){btn.innerHTML='&#x2601; Push to Budget App';btn.disabled=false;btn.style.color='';btn.style.borderColor='';},3000);
+    } else { throw new Error('HTTP '+resp.status); }
+  } catch(e){
+    btn.textContent='⚠ '+e.message; btn.style.color='#ef4444'; btn.style.borderColor='#ef4444'; btn.disabled=false;
+  }
+}
+// TODO (IMPORTANT): Budget App cost integration — fuel cost/mile, driver rate, truck fixed cost → monthly P&L in Supabase budget app.
+</script>
+
+<!-- ANALYSIS PANEL -->
+<div class="psec" id="sec-Analysis">
+  <div style="padding:20px;max-width:1100px;margin:0 auto">
+    <div style="margin-bottom:18px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:2px;text-transform:uppercase;color:#e2e6f3;margin-bottom:4px">&#x1F4CA; Route Analysis</div>
+      <div style="font-size:12px;color:#6b7399;line-height:1.6">Processes all historical runs through OSRM to get real driving distances and times. Local route excluded. Results push to Firebase for the budget app.</div>
+    </div>
+    <div style="background:#13161f;border:1px solid #262a3e;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#6b7399;margin-bottom:12px">Analysis Mode</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <label class="an-mode-opt"><input type="radio" name="an-mode" value="constrained" checked>
+          <div class="an-mode-card"><div class="an-mode-title">&#x1F4CB; Our Parameters</div><div class="an-mode-desc">Respects your route constraints. Reflects how routes should run.</div></div></label>
+        <label class="an-mode-opt"><input type="radio" name="an-mode" value="optimized">
+          <div class="an-mode-card"><div class="an-mode-title">&#x26A1; Fully Optimized</div><div class="an-mode-desc">Pure nearest-neighbour, no constraints. Shows theoretical best-case mileage.</div></div></label>
+        <label class="an-mode-opt"><input type="radio" name="an-mode" value="vrp">
+          <div class="an-mode-card"><div class="an-mode-title">&#x1F69A; Fewest Trucks (VRP)</div><div class="an-mode-desc">Packs all stops each day into fewest trucks that return by 5 PM.</div></div></label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button id="an-run-btn" onclick="runAnalysis()" style="background:#818cf8;border:none;border-radius:8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:11px 24px;cursor:pointer">&#x25B6; Run Analysis</button>
+        <button id="an-cancel-btn" onclick="cancelAnalysis()" style="display:none;background:none;border:1px solid #ef4444;border-radius:8px;color:#ef4444;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;cursor:pointer">&#x25A0; Cancel</button>
+        <button onclick="exportAnalysisCSV()" style="background:none;border:1px solid #262a3e;border-radius:8px;color:#6b7399;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;cursor:pointer">&#x2193; Export CSV</button>
+        <button id="an-push-btn" onclick="pushAnalysisToFirebase()" style="background:none;border:1px solid #262a3e;border-radius:8px;color:#6b7399;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;cursor:pointer">&#x2601; Push to Budget App</button>
+      </div>
+    </div>
+    <div id="an-progress-wrap" style="display:none;background:#13161f;border:1px solid #262a3e;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span id="an-progress-label" style="font-size:11px;color:#6b7399;font-family:'Barlow Condensed',sans-serif">Starting...</span>
+      </div>
+      <div style="background:#0d0f18;border-radius:4px;height:6px;overflow:hidden">
+        <div id="an-progress-bar" style="height:100%;background:linear-gradient(90deg,#818cf8,#a855f7);border-radius:4px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+    <div id="an-results"></div>
   </div>
 </div>
 
