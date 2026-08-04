@@ -259,7 +259,22 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .ldm-act-btn.dir:hover{background:#1a1b2e}
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
 
-/* ── ANALYSIS TAB ── */
+/* ── ANALYSIS MAP MODAL ── */
+#an-map-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:4000;display:none;flex-direction:column}
+#an-map-overlay.open{display:flex}
+.an-map-header{display:flex;align-items:center;padding:12px 16px;background:#13161f;border-bottom:1px solid #262a3e;flex-shrink:0;gap:12px}
+.an-map-header-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:#e2e6f3;flex:1}
+#an-map-layers{display:flex;gap:6px;align-items:center}
+.an-layer-btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:4px;cursor:pointer;border:1px solid currentColor;background:none;transition:opacity .15s}
+.an-map-close-btn{background:none;border:none;color:#6b7399;font-size:18px;cursor:pointer;padding:0 2px;transition:color .15s;flex-shrink:0}
+.an-map-close-btn:hover{color:#e2e6f3}
+#an-map-container{flex:1;z-index:1}
+#an-map-loading{position:absolute;inset:0;background:rgba(13,15,24,.75);z-index:10;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;pointer-events:none}
+#an-map-vrp-legend{position:absolute;bottom:16px;left:16px;z-index:10;background:#13161f;border:1px solid #262a3e;border-radius:8px;padding:10px 14px;display:none;max-height:220px;overflow-y:auto}
+.an-map-btn{background:none;border:1px solid #262a3e;border-radius:4px;color:#818cf8;font-size:11px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+.an-map-btn:hover{border-color:#818cf8}
+.an-result-row.an-row-open td{background:#13162a!important}
+.an-stop-detail{background:#0d0f18;border-top:1px solid #262a3e}
 .an-mode-opt{cursor:pointer;display:block;flex:1;min-width:200px}
 .an-mode-opt input{display:none}
 .an-mode-card{background:#0d0f18;border:1px solid #262a3e;border-radius:8px;padding:12px 14px;transition:border-color .15s}
@@ -3332,11 +3347,33 @@ function minsToTime(m) {
   return h12+':'+(min<10?'0':'')+min+' '+ampm;
 }
 
+async function osrmRoute(stops) {
+  // Preserves stop order — use for constrained/as-logged runs
+  var pts = [{lat:DEPOT.lat,lon:DEPOT.lon}].concat(stops).concat([{lat:DEPOT.lat,lon:DEPOT.lon}]);
+  if (!pts.every(function(p){return p.lat&&p.lon;})) return null;
+  var coords = pts.map(function(p){return p.lon+','+p.lat;}).join(';');
+  var cacheKey = 'route|'+coords;
+  if (_osrmCache[cacheKey]) return _osrmCache[cacheKey];
+  try {
+    var resp = await fetch(OSRM_BASE+'/route/v1/driving/'+coords+'?overview=full&geometries=geojson');
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    if (!data.routes||!data.routes[0]) return null;
+    var r = data.routes[0];
+    var result = {distanceMi: r.distance/1609.34, durationMin: r.duration/60,
+                  geometry: r.geometry};
+    _osrmCache[cacheKey] = result;
+    return result;
+  } catch(e){ return null; }
+}
+
+// Legacy alias used by VRP solver (no geometry needed there)
 async function osrmTrip(stops) {
   var pts = [{lat:DEPOT.lat,lon:DEPOT.lon}].concat(stops).concat([{lat:DEPOT.lat,lon:DEPOT.lon}]);
   if (!pts.every(function(p){return p.lat&&p.lon;})) return null;
   var coords = pts.map(function(p){return p.lon+','+p.lat;}).join(';');
-  if (_osrmCache[coords]) return _osrmCache[coords];
+  var cacheKey = 'trip|'+coords;
+  if (_osrmCache[cacheKey]) return _osrmCache[cacheKey];
   try {
     var resp = await fetch(OSRM_BASE+'/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last&overview=false');
     if (!resp.ok) return null;
@@ -3344,7 +3381,7 @@ async function osrmTrip(stops) {
     if (!data.trips||!data.trips[0]) return null;
     var t = data.trips[0];
     var result = {distanceMi: t.distance/1609.34, durationMin: t.duration/60};
-    _osrmCache[coords] = result;
+    _osrmCache[cacheKey] = result;
     return result;
   } catch(e){ return null; }
 }
@@ -3433,7 +3470,10 @@ async function runAnalysis() {
   }
   setAnProgress(6,'Loaded '+totalRuns+' runs — starting OSRM processing...');
 
-  if(mode==='vrp'){
+  if(mode==='compare'){
+    setAnProgress(7,'Running all three modes simultaneously...');
+    await runCompare(allLogs, ROUTES_TO_ANALYZE);
+  } else if(mode==='vrp'){
     // Build per-day stop pools
     var dayMap={};
     ROUTES_TO_ANALYZE.forEach(function(r){
@@ -3455,7 +3495,7 @@ async function runAnalysis() {
         trucksNeeded:trucks.length,totalMiles:trucks.reduce(function(s,t){return s+t.distMi;},0),
         anyLate:trucks.some(function(t){return t.late;})});
     }
-  } else {
+  } else if(mode!=='compare') {
     var processed=0;
     for(var ri2=0;ri2<ROUTES_TO_ANALYZE.length;ri2++){
       var route=ROUTES_TO_ANALYZE[ri2];
@@ -3466,8 +3506,10 @@ async function runAnalysis() {
         setAnProgress(6+(processed/totalRuns)*90,route+' '+entry.timestamp.slice(0,10)+' ['+( entry.runPeriod||'AM')+']');
         var stops=enrichStops(entry.stops);
         if(!stops.length){processed++;continue;}
-        var ordered=(mode==='optimized')?nnOptimize(stops):stops;
-        var trip=await osrmTrip(ordered);
+        var constrained = stops;                   // as-logged order
+        var optimized   = nnOptimize(stops);       // nearest-neighbour order
+        var ordered = (mode==='optimized') ? optimized : constrained;
+        var trip = await osrmRoute(ordered);
         var distMi=trip?trip.distanceMi:null;
         var driveMin=trip?trip.durationMin:null;
         var stopMin=stops.length*STOP_MIN;
@@ -3477,7 +3519,8 @@ async function runAnalysis() {
         var schedMin=(period==='PM'&&schedArr.length>1)?schedArr[1]:schedArr[0];
         var returnMin=schedMin+(totalMin||0);
         _analysisResults.push({date:entry.timestamp.slice(0,10),route:route,period:period,mode:mode,
-          stops:stops.length,distMi:distMi,driveMin:driveMin,stopMin:stopMin,totalMin:totalMin,
+          stops:stops.length, constrainedStops:constrained, optimizedStops:optimized,
+          distMi:distMi,driveMin:driveMin,stopMin:stopMin,totalMin:totalMin,
           schedDepTime:minsToTime(schedMin),returnTime:totalMin?minsToTime(returnMin):'—',
           returnMin:returnMin,late5pm:totalMin?returnMin>END_OF_DAY:null,
           driver:entry.driver||'',truck:entry.truck||''});
@@ -3488,13 +3531,14 @@ async function runAnalysis() {
     }
   }
 
-  setAnProgress(100,'Complete — '+_analysisResults.length+' records processed.');
+  setAnProgress(100,'Complete — '+( mode==='compare' ? _compareResults.length : _analysisResults.length)+' records processed.');
   setTimeout(function(){
     document.getElementById('an-progress-wrap').style.display='none';
     document.getElementById('an-run-btn').style.display='inline-block';
     document.getElementById('an-cancel-btn').style.display='none';
   }, 800);
-  renderAnalysisResults(mode);
+  if (mode==='compare') renderCompareResults();
+  else renderAnalysisResults(mode);
   _analysisRunning=false;
 }
 
@@ -3516,12 +3560,19 @@ function renderAnalysisResults(mode){
       '<div class="an-card"><div class="an-card-val">'+minT+'</div><div class="an-card-lbl">Lightest Day Trucks</div></div>'+
       '<div class="an-card"><div class="an-card-val">'+lateD+'</div><div class="an-card-lbl">Days w/ Late Return</div></div>'+
       '<div class="an-card"><div class="an-card-val">'+Math.round(totMi).toLocaleString()+'</div><div class="an-card-lbl">Total Miles</div></div>'+
-      '</div><div style="overflow-x:auto"><table class="an-table"><thead><tr><th>Date</th><th>Stops</th><th>Trucks Needed</th><th>Total Miles</th><th>Late?</th></tr></thead><tbody>';
-    _analysisResults.forEach(function(d){
-      html+='<tr><td>'+d.date+'</td><td>'+d.totalStops+'</td>'+
+      '</div><div style="overflow-x:auto"><table class="an-table" id="an-tbl"><thead><tr>'+
+      '<th>Date</th><th>Stops</th><th>Trucks</th><th>Total Miles</th><th>Late?</th><th></th></tr></thead><tbody>';
+    _analysisResults.forEach(function(d,idx){
+      var lateF=d.anyLate?'<span style="color:#ef4444">⚠ Yes</span>':'<span style="color:#22c55e">✓ No</span>';
+      html+='<tr class="an-result-row" data-idx="'+idx+'" style="cursor:pointer">'+
+        '<td>'+d.date+'</td><td>'+d.totalStops+'</td>'+
         '<td><strong style="color:#818cf8">'+d.trucksNeeded+'</strong></td>'+
         '<td>'+(d.totalMiles?d.totalMiles.toFixed(1):'—')+'</td>'+
-        '<td>'+(d.anyLate?'<span style="color:#ef4444">⚠ Yes</span>':'<span style="color:#22c55e">✓ No</span>')+'</td></tr>';
+        '<td>'+lateF+'</td>'+
+        '<td><button class="an-map-btn" onclick="event.stopPropagation();openVRPDayMap('+idx+')" title="View all trucks on map">&#x1F5FA; Map</button></td>'+
+        '</tr>'+
+        '<tr class="an-detail-row" id="an-detail-'+idx+'" style="display:none">'+
+        '<td colspan="6" style="padding:0"><div class="an-stop-detail" id="an-stop-detail-'+idx+'"></div></td></tr>';
     });
     html+='</tbody></table></div>';
   } else {
@@ -3536,21 +3587,255 @@ function renderAnalysisResults(mode){
       '<div class="an-card"><div class="an-card-val">'+avgMi.toFixed(1)+'</div><div class="an-card-lbl">Avg Miles/Run</div></div>'+
       '<div class="an-card"><div class="an-card-val">'+avgSt+'</div><div class="an-card-lbl">Avg Stops/Run</div></div>'+
       '<div class="an-card"><div class="an-card-val">'+((lateC/_analysisResults.length)*100).toFixed(0)+'%</div><div class="an-card-lbl">Back After 5PM</div></div>'+
-      '</div><div style="overflow-x:auto"><table class="an-table"><thead><tr>'+
-      '<th>Date</th><th>Route</th><th>Period</th><th>Stops</th><th>Miles</th><th>Drive Min</th><th>Stop Min</th><th>Total Min</th><th>Sched Dep</th><th>Est Return</th><th>By 5PM?</th></tr></thead><tbody>';
-    _analysisResults.forEach(function(r){
+      '</div><div style="font-size:11px;color:#6b7399;margin-bottom:8px;padding-left:2px">&#x1F4A1; Click any row to see stops &amp; map. Use toggle on map to compare Our Parameters vs Optimized.</div>'+
+      '<div style="overflow-x:auto"><table class="an-table" id="an-tbl"><thead><tr>'+
+      '<th>Date</th><th>Route</th><th>Period</th><th>Stops</th><th>Miles</th>'+
+      '<th>Drive Min</th><th>Stop Min</th><th>Total Min</th><th>Sched Dep</th><th>Est Return</th><th>By 5PM?</th><th></th></tr></thead><tbody>';
+    _analysisResults.forEach(function(r,idx){
       var col=RC[r.route]||'#818cf8';
       var flag=r.late5pm===null?'—':r.late5pm?'<span style="color:#ef4444">⚠ Late</span>':'<span style="color:#22c55e">✓ Yes</span>';
-      html+='<tr><td>'+r.date+'</td><td><span style="color:'+col+';font-weight:700">'+r.route+'</span></td>'+
+      html+='<tr class="an-result-row" data-idx="'+idx+'" style="cursor:pointer">'+
+        '<td>'+r.date+'</td>'+
+        '<td><span style="color:'+col+';font-weight:700">'+r.route+'</span></td>'+
         '<td>'+r.period+'</td><td>'+r.stops+'</td>'+
         '<td>'+(r.distMi?r.distMi.toFixed(1):'—')+'</td>'+
         '<td>'+(r.driveMin?Math.round(r.driveMin):'—')+'</td>'+
         '<td>'+r.stopMin+'</td><td>'+(r.totalMin?Math.round(r.totalMin):'—')+'</td>'+
-        '<td>'+r.schedDepTime+'</td><td>'+r.returnTime+'</td><td>'+flag+'</td></tr>';
+        '<td>'+r.schedDepTime+'</td><td>'+r.returnTime+'</td><td>'+flag+'</td>'+
+        '<td><button class="an-map-btn" onclick="event.stopPropagation();openRunMap('+idx+')" title="View route on map">&#x1F5FA;</button></td>'+
+        '</tr>'+
+        '<tr class="an-detail-row" id="an-detail-'+idx+'" style="display:none">'+
+        '<td colspan="12" style="padding:0"><div class="an-stop-detail" id="an-stop-detail-'+idx+'"></div></td></tr>';
     });
     html+='</tbody></table></div>';
   }
   div.innerHTML=html;
+
+  // Wire up row click → expand stop list
+  div.querySelectorAll('.an-result-row').forEach(function(row){
+    row.addEventListener('click', function(){
+      var idx = parseInt(row.dataset.idx);
+      var detailRow = document.getElementById('an-detail-'+idx);
+      var isOpen = detailRow.style.display !== 'none';
+      // Close all
+      div.querySelectorAll('.an-detail-row').forEach(function(r){r.style.display='none';});
+      div.querySelectorAll('.an-result-row').forEach(function(r){r.classList.remove('an-row-open');});
+      if (!isOpen) {
+        detailRow.style.display = '';
+        row.classList.add('an-row-open');
+        renderStopDetail(idx, mode);
+      }
+    });
+  });
+}
+
+function renderStopDetail(idx, mode) {
+  var detailDiv = document.getElementById('an-stop-detail-'+idx);
+  if (!detailDiv || detailDiv.innerHTML) return; // already rendered
+  var r = _analysisResults[idx];
+  if (!r) return;
+
+  if (mode === 'vrp') {
+    var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6'];
+    var html = '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 14px">';
+    r.trucks.forEach(function(truck, ti) {
+      var col = VRP_COLORS[ti % VRP_COLORS.length];
+      html += '<div style="min-width:220px;flex:1"><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;color:'+col+';margin-bottom:6px;text-transform:uppercase">Truck '+(ti+1)+' — '+truck.stops.length+' stops — '+truck.distMi.toFixed(1)+' mi — back '+truck.returnTimeStr+'</div>';
+      truck.stops.forEach(function(s, si){
+        html += '<div style="font-size:11px;color:#c4c9e2;padding:2px 0;border-bottom:1px solid #1a1d2e">'+
+          '<span style="color:'+col+';font-weight:700;margin-right:6px">'+(si+1)+'.</span>'+
+          (s.CompanyName||'').slice(0,28)+' <span style="color:#6b7399">'+(s.City||'')+'</span></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    detailDiv.innerHTML = html;
+  } else {
+    var stops = (mode === 'optimized') ? (r.optimizedStops||[]) : (r.constrainedStops||[]);
+    var html = '<div style="display:flex;gap:16px;padding:12px 14px;flex-wrap:wrap">';
+    // Our Parameters column
+    html += '<div style="flex:1;min-width:220px"><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;color:#818cf8;text-transform:uppercase;margin-bottom:6px">Our Parameters</div>';
+    (r.constrainedStops||[]).forEach(function(s,si){
+      html += '<div style="font-size:11px;color:#c4c9e2;padding:2px 0;border-bottom:1px solid #1a1d2e">'+
+        '<span style="color:#818cf8;font-weight:700;margin-right:6px">'+(si+1)+'.</span>'+
+        (s.CompanyName||'').slice(0,25)+' <span style="color:#6b7399">'+(s.City||'')+'</span></div>';
+    });
+    html += '</div>';
+    // Optimized column
+    html += '<div style="flex:1;min-width:220px"><div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;color:#22c55e;text-transform:uppercase;margin-bottom:6px">Fully Optimized</div>';
+    (r.optimizedStops||[]).forEach(function(s,si){
+      html += '<div style="font-size:11px;color:#c4c9e2;padding:2px 0;border-bottom:1px solid #1a1d2e">'+
+        '<span style="color:#22c55e;font-weight:700;margin-right:6px">'+(si+1)+'.</span>'+
+        (s.CompanyName||'').slice(0,25)+' <span style="color:#6b7399">'+(s.City||'')+'</span></div>';
+    });
+    html += '</div></div>';
+    detailDiv.innerHTML = html;
+  }
+}
+
+// ── ANALYSIS MAP MODAL ────────────────────────────────────────────────────────
+var _analysisMap     = null;
+var _analysisLayers  = [];
+var _activeLayers    = {constrained: true, optimized: true};
+
+function initAnalysisMap() {
+  if (_analysisMap) return;
+  _analysisMap = L.map('an-map-container', {zoomControl: true, attributionControl: false})
+    .setView([DEPOT.lat, DEPOT.lon], 9);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom: 19})
+   .addTo(_analysisMap);
+}
+
+function clearAnalysisLayers() {
+  _analysisLayers.forEach(function(l){ _analysisMap.removeLayer(l); });
+  _analysisLayers = [];
+}
+
+function drawAnalysisRouteGeom(geom, color, label) {
+  if (!geom) return;
+  var coords = geom.coordinates.map(function(c){ return [c[1], c[0]]; });
+  var line = L.polyline(coords, {color: color, weight: 3.5, opacity: 0.85}).addTo(_analysisMap);
+  _analysisLayers.push(line);
+}
+
+function drawAnalysisStops(stops, color, label) {
+  var bounds = [[DEPOT.lat, DEPOT.lon]];
+  // Depot marker
+  var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:8, color:'#fff', fillColor:'#fff', fillOpacity:1, weight:2})
+    .bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
+  _analysisLayers.push(dm);
+
+  stops.forEach(function(s, i) {
+    if (!s.lat || !s.lon) return;
+    bounds.push([s.lat, s.lon]);
+    var m = L.circleMarker([s.lat, s.lon], {radius: 7, color: color, fillColor: color, fillOpacity: 0.85, weight: 2})
+      .bindPopup('<div style="font-size:12px"><strong>'+(i+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'</div>')
+      .addTo(_analysisMap);
+    _analysisLayers.push(m);
+    // Stop number label
+    var icon = L.divIcon({className:'', html:'<div style="background:'+color+';color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;border-radius:10px;padding:1px 4px;margin-top:-8px;margin-left:-6px;white-space:nowrap">'+(i+1)+'</div>', iconSize:[20,14]});
+    var lbl = L.marker([s.lat, s.lon], {icon:icon, interactive:false}).addTo(_analysisMap);
+    _analysisLayers.push(lbl);
+  });
+  if (bounds.length > 1) _analysisMap.fitBounds(bounds, {padding:[30,30]});
+}
+
+async function openRunMap(idx) {
+  var r = _analysisResults[idx];
+  if (!r) return;
+  document.getElementById('an-map-title').textContent = r.route+' — '+r.date+' ['+r.period+']';
+  document.getElementById('an-map-overlay').classList.add('open');
+  document.getElementById('an-map-loading').style.display = 'flex';
+  document.getElementById('an-map-layers').style.display = 'flex';
+  document.getElementById('an-map-vrp-legend').style.display = 'none';
+  document.body.style.overflow = 'hidden';
+
+  setTimeout(async function(){
+    initAnalysisMap();
+    _analysisMap.invalidateSize();
+    clearAnalysisLayers();
+
+    var cStops = r.constrainedStops || [];
+    var oStops = r.optimizedStops   || [];
+
+    // Fetch both geometries
+    var [cTrip, oTrip] = await Promise.all([osrmRoute(cStops), osrmRoute(oStops)]);
+
+    // Draw constrained (blue)
+    if (_activeLayers.constrained) {
+      drawAnalysisRouteGeom(cTrip && cTrip.geometry, '#818cf8', 'Our Parameters');
+      drawAnalysisStops(cStops, '#818cf8', 'Our Parameters');
+    }
+    // Draw optimized (green) — offset markers slightly to avoid overlap
+    if (_activeLayers.optimized) {
+      drawAnalysisRouteGeom(oTrip && oTrip.geometry, '#22c55e', 'Optimized');
+      if (!_activeLayers.constrained) drawAnalysisStops(oStops, '#22c55e', 'Optimized');
+    }
+
+    document.getElementById('an-map-loading').style.display = 'none';
+  }, 80);
+}
+
+async function openVRPDayMap(idx) {
+  var d = _analysisResults[idx];
+  if (!d) return;
+  var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6','#06b6d4'];
+  document.getElementById('an-map-title').textContent = 'VRP Day Map — '+d.date+' ('+d.trucksNeeded+' trucks, '+d.totalStops+' stops)';
+  document.getElementById('an-map-overlay').classList.add('open');
+  document.getElementById('an-map-loading').style.display = 'flex';
+  document.getElementById('an-map-layers').style.display = 'none';
+  document.body.style.overflow = 'hidden';
+
+  // Build legend
+  var legendHtml = '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;color:#6b7399;text-transform:uppercase;margin-bottom:6px">Trucks</div>';
+  d.trucks.forEach(function(t, ti){
+    var col = VRP_COLORS[ti % VRP_COLORS.length];
+    legendHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+
+      '<div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div>'+
+      '<span style="font-size:10px;color:#c4c9e2">Truck '+(ti+1)+': '+t.stops.length+' stops, '+t.distMi.toFixed(1)+'mi</span></div>';
+  });
+  var legendEl = document.getElementById('an-map-vrp-legend');
+  legendEl.innerHTML = legendHtml;
+  legendEl.style.display = 'block';
+
+  setTimeout(async function(){
+    initAnalysisMap();
+    _analysisMap.invalidateSize();
+    clearAnalysisLayers();
+
+    // Depot
+    var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:9, color:'#fff', fillColor:'#fff', fillOpacity:1, weight:2})
+      .bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
+    _analysisLayers.push(dm);
+
+    var allBounds = [[DEPOT.lat, DEPOT.lon]];
+
+    for (var ti = 0; ti < d.trucks.length; ti++) {
+      var truck = d.trucks[ti];
+      var col = VRP_COLORS[ti % VRP_COLORS.length];
+      var trip = await osrmRoute(truck.stops);
+
+      // Route line
+      if (trip && trip.geometry) {
+        var coords = trip.geometry.coordinates.map(function(c){return [c[1],c[0]];});
+        var line = L.polyline(coords, {color:col, weight:3, opacity:0.8}).addTo(_analysisMap);
+        _analysisLayers.push(line);
+      }
+
+      // Stop markers
+      truck.stops.forEach(function(s, si){
+        if (!s.lat || !s.lon) return;
+        allBounds.push([s.lat, s.lon]);
+        var m = L.circleMarker([s.lat, s.lon], {radius:6, color:col, fillColor:col, fillOpacity:0.9, weight:1.5})
+          .bindPopup('<div style="font-size:11px"><strong>Truck '+(ti+1)+' — Stop '+(si+1)+'</strong><br>'+(s.CompanyName||'')+'<br><span style="color:#6b7399">'+(s.City||'')+'</span></div>')
+          .addTo(_analysisMap);
+        _analysisLayers.push(m);
+        var icon = L.divIcon({className:'', html:'<div style="background:'+col+';color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:8px;border-radius:8px;padding:1px 3px;margin-top:-7px;margin-left:-5px">'+(si+1)+'</div>', iconSize:[16,12]});
+        var lbl = L.marker([s.lat, s.lon], {icon:icon, interactive:false}).addTo(_analysisMap);
+        _analysisLayers.push(lbl);
+      });
+    }
+
+    if (allBounds.length > 1) _analysisMap.fitBounds(allBounds, {padding:[30,30]});
+    document.getElementById('an-map-loading').style.display = 'none';
+  }, 80);
+}
+
+function toggleAnalysisLayer(layer) {
+  _activeLayers[layer] = !_activeLayers[layer];
+  var btn = document.getElementById('an-layer-'+layer);
+  btn.style.opacity = _activeLayers[layer] ? '1' : '0.4';
+  // Re-open current map with updated layers
+  var openIdx = document.querySelector('.an-row-open');
+  if (openIdx) {
+    var idx = parseInt(openIdx.dataset.idx);
+    openRunMap(idx);
+  }
+}
+
+function closeAnalysisMap() {
+  document.getElementById('an-map-overlay').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 function exportAnalysisCSV(){
@@ -3596,6 +3881,316 @@ async function pushAnalysisToFirebase(){
   }
 }
 // TODO (IMPORTANT): Budget App cost integration — fuel cost/mile, driver rate, truck fixed cost → monthly P&L in Supabase budget app.
+
+// ── COMPARE ALL MODES ─────────────────────────────────────────────────────────
+var _compareResults = []; // one entry per day
+
+async function runCompare(allLogs, ROUTES_TO_ANALYZE) {
+  // Build per-day stop pools and per-day per-route run maps
+  var dayMap     = {};  // date → {stops:[], routes:{route→[entries]}}
+  ROUTES_TO_ANALYZE.forEach(function(r) {
+    allLogs[r].forEach(function(entry) {
+      var date = entry.timestamp.slice(0,10);
+      if (!dayMap[date]) dayMap[date] = {stops:[], routes:{}};
+      var enriched = enrichStops(entry.stops);
+      enriched.forEach(function(s){ s.originalRoute=r; dayMap[date].stops.push(s); });
+      if (!dayMap[date].routes[r]) dayMap[date].routes[r] = [];
+      dayMap[date].routes[r].push({entry:entry, stops:enriched, period:entry.runPeriod||'AM'});
+    });
+  });
+
+  var dates = Object.keys(dayMap).sort();
+  var totalDays = dates.length;
+  _compareResults = [];
+
+  for (var di = 0; di < dates.length; di++) {
+    if (_analysisCancelled) break;
+    var date = dates[di];
+    var day  = dayMap[date];
+    setAnProgress(8 + (di/totalDays)*88, 'Comparing '+date+' — constrained, optimized, VRP...');
+
+    // ── Constrained + Optimized: per route ──
+    var constrainedMiles = 0, constrainedMin = 0, constrainedRunCount = 0;
+    var optimizedMiles   = 0, optimizedMin   = 0;
+    var routeDetails = {};
+
+    for (var r in day.routes) {
+      var runs = day.routes[r];
+      routeDetails[r] = [];
+      for (var ri = 0; ri < runs.length; ri++) {
+        var run = runs[ri];
+        var cStops = run.stops;
+        var oStops = nnOptimize(run.stops);
+
+        var [cTrip, oTrip] = await Promise.all([osrmRoute(cStops), osrmRoute(oStops)]);
+        var cMi  = cTrip ? cTrip.distanceMi  : null;
+        var cMin = cTrip ? cTrip.durationMin  : null;
+        var oMi  = oTrip ? oTrip.distanceMi  : null;
+        var oMin = oTrip ? oTrip.durationMin  : null;
+
+        if (cMi)  constrainedMiles += cMi;
+        if (cMin) constrainedMin   += cMin + run.stops.length * STOP_MIN;
+        if (oMi)  optimizedMiles   += oMi;
+        if (oMin) optimizedMin     += oMin + run.stops.length * STOP_MIN;
+        constrainedRunCount++;
+
+        routeDetails[r].push({
+          period: run.period, stops: run.stops.length,
+          constrainedStops: cStops, optimizedStops: oStops,
+          cMi: cMi, oMi: oMi, cGeom: cTrip&&cTrip.geometry, oGeom: oTrip&&oTrip.geometry
+        });
+      }
+    }
+
+    // ── VRP ──
+    var vrpTrucks = await solveVRP(day.stops);
+    var vrpMiles  = vrpTrucks.reduce(function(s,t){return s+t.distMi;},0);
+    var vrpMin    = vrpTrucks.reduce(function(s,t){return s+t.totalMin;},0);
+
+    _compareResults.push({
+      date: date,
+      totalStops: day.stops.length,
+      currentTrucks: constrainedRunCount,
+      // Constrained
+      cMiles: constrainedMiles, cMin: constrainedMin,
+      // Optimized
+      oMiles: optimizedMiles, oMin: optimizedMin,
+      milesSaved: constrainedMiles - optimizedMiles,
+      milesSavedPct: constrainedMiles > 0 ? (constrainedMiles - optimizedMiles)/constrainedMiles*100 : 0,
+      // VRP
+      vrpTrucks: vrpTrucks, vrpCount: vrpTrucks.length,
+      vrpMiles: vrpMiles, vrpMin: vrpMin,
+      trucksSaved: constrainedRunCount - vrpTrucks.length,
+      // Detail
+      routeDetails: routeDetails
+    });
+
+    await new Promise(function(r){ setTimeout(r, 30); });
+  }
+}
+
+function renderCompareResults() {
+  var div = document.getElementById('an-results');
+  if (!_compareResults.length) { div.innerHTML='<div style="text-align:center;color:#6b7399;padding:40px">No results.</div>'; return; }
+
+  var totC  = _compareResults.reduce(function(s,d){return s+d.cMiles;},0);
+  var totO  = _compareResults.reduce(function(s,d){return s+d.oMiles;},0);
+  var totV  = _compareResults.reduce(function(s,d){return s+d.vrpMiles;},0);
+  var totSaved   = totC - totO;
+  var avgTrSaved = (_compareResults.reduce(function(s,d){return s+d.trucksSaved;},0) / _compareResults.length);
+  var maxTrSaved = Math.max.apply(null, _compareResults.map(function(d){return d.trucksSaved;}));
+  var daysWinO   = _compareResults.filter(function(d){return d.milesSaved>1;}).length;
+
+  var html = '<div class="an-summary-cards">'+
+    '<div class="an-card"><div class="an-card-val">'+Math.round(totC).toLocaleString()+'</div><div class="an-card-lbl" style="color:#818cf8">Our Params Miles</div></div>'+
+    '<div class="an-card"><div class="an-card-val">'+Math.round(totO).toLocaleString()+'</div><div class="an-card-lbl" style="color:#22c55e">Optimized Miles</div></div>'+
+    '<div class="an-card"><div class="an-card-val">'+Math.round(totSaved).toLocaleString()+'</div><div class="an-card-lbl">Miles Savings (Opt vs Ours)</div></div>'+
+    '<div class="an-card"><div class="an-card-val">'+Math.round(totV).toLocaleString()+'</div><div class="an-card-lbl" style="color:#f59e0b">VRP Miles</div></div>'+
+    '<div class="an-card"><div class="an-card-val">'+avgTrSaved.toFixed(1)+'</div><div class="an-card-lbl">Avg Trucks Saved/Day (VRP)</div></div>'+
+    '<div class="an-card"><div class="an-card-val">'+maxTrSaved+'</div><div class="an-card-lbl">Max Trucks Saved (1 Day)</div></div>'+
+    '</div>';
+
+  // Mode winner key
+  html += '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:#6b7399;padding-left:2px">'+
+    '<span>&#x25A0; <span style="color:#818cf8">Blue</span> = Our Parameters</span>'+
+    '<span>&#x25A0; <span style="color:#22c55e">Green</span> = Fully Optimized</span>'+
+    '<span>&#x25A0; <span style="color:#f59e0b">Gold</span> = VRP (fewest trucks)</span>'+
+    '<span>&#x1F3C6; = best value for that column on that day</span>'+
+    '</div>';
+
+  html += '<div style="overflow-x:auto"><table class="an-table" id="an-tbl"><thead><tr>'+
+    '<th>Date</th><th>Stops</th>'+
+    '<th style="color:#818cf8">Our Mi</th>'+
+    '<th style="color:#22c55e">Opt Mi</th>'+
+    '<th>Mi Saved</th>'+
+    '<th>% Better</th>'+
+    '<th style="color:#818cf8">Cur Trucks</th>'+
+    '<th style="color:#f59e0b">VRP Trucks</th>'+
+    '<th>Trucks Saved</th>'+
+    '<th style="color:#f59e0b">VRP Mi</th>'+
+    '<th></th>'+
+    '</tr></thead><tbody>';
+
+  _compareResults.forEach(function(d, idx) {
+    var savePct  = d.milesSavedPct.toFixed(1);
+    var saveCol  = d.milesSaved > 5 ? '#22c55e' : d.milesSaved < -1 ? '#ef4444' : '#6b7399';
+    var trSaveCol = d.trucksSaved > 0 ? '#22c55e' : '#6b7399';
+    var bestMi   = Math.min(d.cMiles||9999, d.oMiles||9999, d.vrpMiles||9999);
+
+    html += '<tr class="an-result-row" data-idx="'+idx+'" style="cursor:pointer">'+
+      '<td>'+d.date+'</td>'+
+      '<td>'+d.totalStops+'</td>'+
+      '<td style="color:#818cf8">'+(d.cMiles?(d.cMiles===bestMi?'&#x1F3C6; ':'')+d.cMiles.toFixed(1):'—')+'</td>'+
+      '<td style="color:#22c55e">'+(d.oMiles?(d.oMiles===bestMi?'&#x1F3C6; ':'')+d.oMiles.toFixed(1):'—')+'</td>'+
+      '<td><span style="color:'+saveCol+'">'+( d.milesSaved>0?'+':'')+d.milesSaved.toFixed(1)+' mi</span></td>'+
+      '<td><span style="color:'+saveCol+'">'+savePct+'%</span></td>'+
+      '<td style="color:#818cf8;text-align:center">'+d.currentTrucks+'</td>'+
+      '<td style="color:#f59e0b;text-align:center;font-weight:700">'+d.vrpCount+'</td>'+
+      '<td><span style="color:'+trSaveCol+';font-weight:700">'+( d.trucksSaved>0?'▼ '+d.trucksSaved:d.trucksSaved===0?'—':'▲ '+Math.abs(d.trucksSaved))+'</span></td>'+
+      '<td style="color:#f59e0b">'+(d.vrpMiles?(d.vrpMiles===bestMi?'&#x1F3C6; ':'')+d.vrpMiles.toFixed(1):'—')+'</td>'+
+      '<td><button class="an-map-btn" onclick="event.stopPropagation();openCompareMap('+idx+')" title="Compare all modes on map">&#x1F5FA; Compare</button></td>'+
+      '</tr>'+
+      '<tr class="an-detail-row" id="an-detail-'+idx+'" style="display:none">'+
+      '<td colspan="11" style="padding:0"><div class="an-stop-detail" id="an-stop-detail-'+idx+'"></div></td></tr>';
+  });
+
+  html += '</tbody></table></div>';
+  div.innerHTML = html;
+
+  // Row click → per-route breakdown
+  div.querySelectorAll('.an-result-row').forEach(function(row){
+    row.addEventListener('click', function(){
+      var idx = parseInt(row.dataset.idx);
+      var detailRow = document.getElementById('an-detail-'+idx);
+      var isOpen = detailRow.style.display !== 'none';
+      div.querySelectorAll('.an-detail-row').forEach(function(r){r.style.display='none';});
+      div.querySelectorAll('.an-result-row').forEach(function(r){r.classList.remove('an-row-open');});
+      if (!isOpen) {
+        detailRow.style.display='';
+        row.classList.add('an-row-open');
+        renderCompareDetail(idx);
+      }
+    });
+  });
+}
+
+function renderCompareDetail(idx) {
+  var detailDiv = document.getElementById('an-stop-detail-'+idx);
+  if (!detailDiv || detailDiv.innerHTML) return;
+  var d = _compareResults[idx];
+  var html = '<div style="padding:12px 14px;overflow-x:auto"><table class="an-table" style="min-width:500px"><thead><tr>'+
+    '<th>Route</th><th>Period</th><th>Stops</th>'+
+    '<th style="color:#818cf8">Our Params Mi</th>'+
+    '<th style="color:#22c55e">Optimized Mi</th>'+
+    '<th>Miles Saved</th>'+
+    '</tr></thead><tbody>';
+  for (var r in d.routeDetails) {
+    d.routeDetails[r].forEach(function(run) {
+      var saved = (run.cMi&&run.oMi) ? run.cMi-run.oMi : null;
+      var col   = RC[r]||'#818cf8';
+      html += '<tr>'+
+        '<td><span style="color:'+col+';font-weight:700">'+r+'</span></td>'+
+        '<td>'+run.period+'</td><td>'+run.stops+'</td>'+
+        '<td style="color:#818cf8">'+(run.cMi?run.cMi.toFixed(1):'—')+'</td>'+
+        '<td style="color:#22c55e">'+(run.oMi?run.oMi.toFixed(1):'—')+'</td>'+
+        '<td>'+(saved!==null?'<span style="color:'+(saved>0?'#22c55e':'#6b7399')+'">'+( saved>0?'+':'')+saved.toFixed(1)+' mi</span>':'—')+'</td>'+
+        '</tr>';
+    });
+  }
+  html += '</tbody></table><div style="margin-top:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;color:#f59e0b;text-transform:uppercase;margin-bottom:6px">VRP Trucks for this day</div>';
+  var VRP_COLORS=['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6'];
+  d.vrpTrucks.forEach(function(t,ti){
+    var col=VRP_COLORS[ti%VRP_COLORS.length];
+    html += '<div style="font-size:11px;color:#c4c9e2;margin-bottom:3px">'+
+      '<span style="color:'+col+';font-weight:700">Truck '+(ti+1)+':</span> '+
+      t.stops.length+' stops — '+t.distMi.toFixed(1)+' mi — back '+t.returnTimeStr+
+      (t.late?' <span style="color:#ef4444">⚠ late</span>':'')+
+      '</div>';
+  });
+  html += '</div>';
+  detailDiv.innerHTML = html;
+}
+
+async function openCompareMap(idx) {
+  var d = _compareResults[idx];
+  if (!d) return;
+  document.getElementById('an-map-title').textContent = 'Compare All Modes — '+d.date+' ('+d.totalStops+' stops)';
+  document.getElementById('an-map-overlay').classList.add('open');
+  document.getElementById('an-map-loading').style.display = 'flex';
+  document.getElementById('an-map-layers').style.display = 'flex';
+  document.getElementById('an-map-vrp-legend').style.display = 'none';
+  document.body.style.overflow = 'hidden';
+
+  // Update layer labels for 3-way comparison
+  document.getElementById('an-layer-constrained').textContent = '📋 Our Parameters';
+  document.getElementById('an-layer-optimized').textContent   = '⚡ Optimized';
+
+  setTimeout(async function(){
+    initAnalysisMap();
+    _analysisMap.invalidateSize();
+    clearAnalysisLayers();
+
+    var allBounds = [[DEPOT.lat, DEPOT.lon]];
+    var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899'];
+
+    // Depot marker
+    var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:9, color:'#fff', fillColor:'#fff', fillOpacity:1, weight:2})
+      .bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
+    _analysisLayers.push(dm);
+
+    // Layer 1: Our Parameters (blue lines + markers)
+    if (_activeLayers.constrained) {
+      for (var r in d.routeDetails) {
+        d.routeDetails[r].forEach(function(run) {
+          if (run.cGeom) {
+            var coords = run.cGeom.coordinates.map(function(c){return [c[1],c[0]];});
+            var line = L.polyline(coords, {color:'#818cf8', weight:3, opacity:0.7, dashArray:'6,4'}).addTo(_analysisMap);
+            _analysisLayers.push(line);
+          }
+          (run.constrainedStops||[]).forEach(function(s,si){
+            if (!s.lat||!s.lon) return;
+            allBounds.push([s.lat,s.lon]);
+            if (!_activeLayers.optimized) { // only show markers when this is the only active layer
+              var m = L.circleMarker([s.lat,s.lon],{radius:5,color:'#818cf8',fillColor:'#818cf8',fillOpacity:.8,weight:1.5})
+                .bindPopup('<strong>'+(si+1)+'. '+r+'</strong><br>'+(s.CompanyName||'')+'<br><span style="color:#818cf8">Our Params</span>')
+                .addTo(_analysisMap);
+              _analysisLayers.push(m);
+            }
+          });
+        });
+      }
+    }
+
+    // Layer 2: Optimized (green lines + markers)
+    if (_activeLayers.optimized) {
+      for (var r2 in d.routeDetails) {
+        d.routeDetails[r2].forEach(function(run) {
+          if (run.oGeom) {
+            var coords = run.oGeom.coordinates.map(function(c){return [c[1],c[0]];});
+            var line = L.polyline(coords, {color:'#22c55e', weight:3, opacity:0.7}).addTo(_analysisMap);
+            _analysisLayers.push(line);
+          }
+          (run.optimizedStops||[]).forEach(function(s,si){
+            if (!s.lat||!s.lon) return;
+            allBounds.push([s.lat,s.lon]);
+            var m = L.circleMarker([s.lat,s.lon],{radius:5,color:'#22c55e',fillColor:'#22c55e',fillOpacity:.8,weight:1.5})
+              .bindPopup('<strong>'+(si+1)+'. '+r2+'</strong><br>'+(s.CompanyName||'')+'<br><span style="color:#22c55e">Optimized order</span>')
+              .addTo(_analysisMap);
+            _analysisLayers.push(m);
+          });
+        });
+      }
+    }
+
+    // Layer 3: VRP trucks (multi-color, always shown as separate toggle would need 3rd btn)
+    // VRP shown as thin colored lines alongside the other two
+    for (var ti = 0; ti < d.vrpTrucks.length; ti++) {
+      var truck = d.vrpTrucks[ti];
+      var tcol  = VRP_COLORS[(ti+2) % VRP_COLORS.length]; // offset colors from blue/green
+      var ttrip = await osrmRoute(truck.stops);
+      if (ttrip && ttrip.geometry) {
+        var tcoords = ttrip.geometry.coordinates.map(function(c){return [c[1],c[0]];});
+        var tline = L.polyline(tcoords, {color:tcol, weight:2, opacity:0.6, dashArray:'2,6'}).addTo(_analysisMap);
+        _analysisLayers.push(tline);
+      }
+    }
+
+    // Legend for VRP trucks
+    var legHtml = '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">VRP Trucks (dotted)</div>';
+    d.vrpTrucks.forEach(function(t,ti){
+      var tcol = VRP_COLORS[(ti+2)%VRP_COLORS.length];
+      legHtml += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'+
+        '<div style="width:16px;height:2px;background:'+tcol+';border:1px dotted '+tcol+'"></div>'+
+        '<span style="font-size:9px;color:#c4c9e2">Truck '+(ti+1)+': '+t.stops.length+' stops</span></div>';
+    });
+    var legEl = document.getElementById('an-map-vrp-legend');
+    legEl.innerHTML += legHtml;
+    legEl.style.display = 'block';
+
+    if (allBounds.length > 1) _analysisMap.fitBounds(allBounds, {padding:[30,30]});
+    document.getElementById('an-map-loading').style.display = 'none';
+  }, 80);
+}
 </script>
 
 <!-- ANALYSIS PANEL -->
@@ -3614,6 +4209,8 @@ async function pushAnalysisToFirebase(){
           <div class="an-mode-card"><div class="an-mode-title">&#x26A1; Fully Optimized</div><div class="an-mode-desc">Pure nearest-neighbour, no constraints. Shows theoretical best-case mileage.</div></div></label>
         <label class="an-mode-opt"><input type="radio" name="an-mode" value="vrp">
           <div class="an-mode-card"><div class="an-mode-title">&#x1F69A; Fewest Trucks (VRP)</div><div class="an-mode-desc">Packs all stops each day into fewest trucks that return by 5 PM.</div></div></label>
+        <label class="an-mode-opt"><input type="radio" name="an-mode" value="compare">
+          <div class="an-mode-card" style="border-color:#f59e0b22"><div class="an-mode-title" style="color:#f59e0b">&#x2194; Compare All Modes</div><div class="an-mode-desc">Runs all three modes simultaneously. Shows side-by-side miles saved, trucks needed, and which approach wins per day. Includes a comparison map.</div></div></label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button id="an-run-btn" onclick="runAnalysis()" style="background:#818cf8;border:none;border-radius:8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:11px 24px;cursor:pointer">&#x25B6; Run Analysis</button>
@@ -3631,6 +4228,26 @@ async function pushAnalysisToFirebase(){
       </div>
     </div>
     <div id="an-results"></div>
+  </div>
+</div>
+
+<!-- ANALYSIS MAP MODAL -->
+<div id="an-map-overlay">
+  <div class="an-map-header">
+    <div class="an-map-header-title" id="an-map-title">Route Map</div>
+    <div id="an-map-layers">
+      <button id="an-layer-constrained" class="an-layer-btn" style="color:#818cf8" onclick="toggleAnalysisLayer('constrained')">&#x25A0; Our Parameters</button>
+      <button id="an-layer-optimized" class="an-layer-btn" style="color:#22c55e" onclick="toggleAnalysisLayer('optimized')">&#x25A0; Optimized</button>
+    </div>
+    <button class="an-map-close-btn" onclick="closeAnalysisMap()">&#x2715;</button>
+  </div>
+  <div style="position:relative;flex:1">
+    <div id="an-map-container" style="width:100%;height:100%"></div>
+    <div id="an-map-loading">
+      <div class="ai-thinking-dot"></div><div class="ai-thinking-dot"></div><div class="ai-thinking-dot"></div>
+      <span style="color:#6b7399;font-size:12px;font-family:'Barlow Condensed',sans-serif">Fetching route from OSRM...</span>
+    </div>
+    <div id="an-map-vrp-legend"></div>
   </div>
 </div>
 
