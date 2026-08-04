@@ -259,7 +259,51 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .ldm-act-btn.dir:hover{background:#1a1b2e}
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
 
-/* ── ANALYSIS MAP MODAL ── */
+/* ── DAILY PLAN TAB ── */
+.dp-section-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#6b7399;margin-bottom:10px}
+.dp-mode-bar{display:flex;gap:6px;margin-bottom:16px}
+.dp-mode-btn{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:8px 20px;border-radius:6px;cursor:pointer;border:1px solid #262a3e;background:none;color:#6b7399;transition:all .15s}
+.dp-mode-btn.active{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
+.dp-upload-zone{border:2px dashed #262a3e;border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative;margin-bottom:8px}
+.dp-upload-zone:hover,.dp-upload-zone.drag{border-color:#f59e0b}
+.dp-upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dp-upload-btns{display:flex;gap:8px;margin-bottom:12px}
+.dp-upload-btn{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:9px 18px;border-radius:7px;cursor:pointer;border:1px solid;transition:all .15s}
+.dp-upload-btn.load{border-color:#f59e0b;color:#f59e0b;background:none}
+.dp-upload-btn.add{border-color:#22c55e;color:#22c55e;background:none}
+.dp-upload-btn.load:hover{background:#f59e0b22}
+.dp-upload-btn.add:hover{background:#22c55e22}
+.dp-review-panel{background:#1a130a;border:1px solid #f59e0b44;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.dp-review-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #2a1f0a;font-size:11px}
+.dp-review-item:last-child{border-bottom:none}
+.dp-review-route-sel{background:#0d0f18;border:1px solid #262a3e;border-radius:4px;color:#e2e6f3;font-family:'Barlow Condensed',sans-serif;font-size:11px;padding:3px 6px;cursor:pointer}
+.dp-route-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.dp-route-chip{background:#13161f;border:1px solid #262a3e;border-radius:8px;padding:10px 14px;min-width:120px}
+.dp-route-chip-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.dp-route-chip-stops{font-size:11px;color:#6b7399}
+.dp-route-chip-window{font-size:10px;color:#3a4060;margin-top:2px}
+.dp-plan-btn{background:#f59e0b;border:none;border-radius:8px;color:#0d0f18;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:12px 28px;cursor:pointer;transition:all .15s}
+.dp-plan-btn:hover{filter:brightness(1.1)}
+.dp-plan-btn:disabled{opacity:.4;cursor:not-allowed}
+.dp-result-section{margin-bottom:20px}
+.dp-route-result{background:#13161f;border:1px solid #262a3e;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.dp-route-result-header{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none}
+.dp-route-result-header:hover{background:#16182a}
+.dp-route-result-body{display:none;border-top:1px solid #262a3e;padding:14px 16px}
+.dp-route-result-body.open{display:block}
+.dp-compare-row{display:flex;gap:16px;flex-wrap:wrap}
+.dp-compare-col{flex:1;min-width:200px}
+.dp-compare-col-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #262a3e}
+.dp-stop-row{font-size:11px;color:#c4c9e2;padding:3px 0;border-bottom:1px solid #1a1d2e;display:flex;gap:8px;align-items:baseline}
+.dp-stop-num{font-weight:700;min-width:18px;flex-shrink:0}
+.dp-stop-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-stop-city{color:#6b7399;font-size:10px;white-space:nowrap}
+.dp-stat-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+.dp-stat{text-align:center;background:#0d0f18;border-radius:6px;padding:8px 12px;flex:1;min-width:80px}
+.dp-stat-val{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px}
+.dp-stat-lbl{font-size:9px;color:#6b7399;letter-spacing:.5px;margin-top:2px}
+.dp-warn-badge{display:inline-block;background:#f59e0b22;border:1px solid #f59e0b66;border-radius:4px;color:#f59e0b;font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;padding:2px 6px;text-transform:uppercase;margin-left:6px}
+.dp-over-badge{background:#ef444422;border-color:#ef444466;color:#ef4444}
 #an-map-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:4000;display:none;flex-direction:column}
 #an-map-overlay.open{display:flex}
 .an-map-header{display:flex;align-items:center;padding:12px 16px;background:#13161f;border-bottom:1px solid #262a3e;flex-shrink:0;gap:12px}
@@ -1933,6 +1977,23 @@ function buildTabs(){
     document.getElementById('sec-Analysis').classList.add('active');
   });
   bar.appendChild(abtn);
+
+  // Daily Plan tab
+  var dpbtn = document.createElement('button');
+  dpbtn.className = 'tbtn';
+  dpbtn.id = 'tbtn-dailyplan';
+  dpbtn.innerHTML = '&#x1F4CB; Daily Plan';
+  dpbtn.style.borderBottomColor = 'transparent';
+  dpbtn.addEventListener('click', function(){
+    activeRoute = '__dailyplan__';
+    document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active');b.style.borderBottomColor='transparent';b.style.color='';});
+    dpbtn.classList.add('active');
+    dpbtn.style.borderBottomColor = '#f59e0b';
+    dpbtn.style.color = '#fff';
+    document.querySelectorAll('.psec').forEach(function(s){s.classList.remove('active');});
+    document.getElementById('sec-DailyPlan').classList.add('active');
+  });
+  bar.appendChild(dpbtn);
 }
 
 // ── CONFIRM MAP ──
@@ -4250,6 +4311,617 @@ async function openCompareMap(idx) {
     <div id="an-map-vrp-legend"></div>
   </div>
 </div>
+
+<!-- DAILY PLAN SECTION -->
+<div class="psec" id="sec-DailyPlan">
+  <div style="padding:20px;max-width:1100px;margin:0 auto">
+    <div style="margin-bottom:18px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:2px;text-transform:uppercase;color:#e2e6f3;margin-bottom:4px">&#x1F4CB; Daily Route Plan</div>
+      <div style="font-size:12px;color:#6b7399;line-height:1.6">Upload the Sales Tickets CSV to plan all routes at once. Compares Our Parameters, Fully Optimized, and Fewest Trucks side by side.</div>
+    </div>
+
+    <!-- Mode -->
+    <div class="dp-section-title">Run Type</div>
+    <div class="dp-mode-bar">
+      <button class="dp-mode-btn active" id="dp-mode-morning" onclick="setDailyMode('morning')">&#x1F305; Morning Runs</button>
+      <button class="dp-mode-btn" id="dp-mode-afternoon" onclick="setDailyMode('afternoon')">&#x1F307; Afternoon Runs</button>
+    </div>
+
+    <!-- Upload -->
+    <div class="dp-section-title">Upload Orders</div>
+    <div class="dp-upload-btns">
+      <button class="dp-upload-btn load" onclick="document.getElementById('dp-file-load').click()">&#x1F4C2; Load CSV <span style="font-size:9px;opacity:.7">(replaces current)</span></button>
+      <button class="dp-upload-btn add" onclick="document.getElementById('dp-file-add').click()">&#x2795; Add CSV <span style="font-size:9px;opacity:.7">(merges with current)</span></button>
+      <input type="file" id="dp-file-load" accept=".csv,.txt" style="display:none" onchange="handleDailyUpload(this,'load')">
+      <input type="file" id="dp-file-add" accept=".csv,.txt" style="display:none" onchange="handleDailyUpload(this,'add')">
+    </div>
+    <div class="dp-upload-zone" id="dp-drop-zone">
+      <div style="font-size:24px;margin-bottom:6px">&#x1F4C4;</div>
+      <div style="font-size:13px;color:#6b7399">Drop the Sales Tickets CSV here, or click a button above</div>
+      <div style="font-size:11px;color:#3a4060;margin-top:4px">Accepts the standard Sales Tickets Lookup export</div>
+    </div>
+    <div id="dp-upload-status" style="font-size:11px;color:#6b7399;min-height:16px;margin-bottom:14px"></div>
+
+    <!-- Manual Review -->
+    <div id="dp-review-wrap" style="display:none;margin-bottom:14px">
+      <div class="dp-section-title">&#x26A0; Manual Review — <span id="dp-review-count">0</span> items need attention</div>
+      <div class="dp-review-panel" id="dp-review-list"></div>
+    </div>
+
+    <!-- Route Preview -->
+    <div id="dp-preview-wrap" style="display:none;margin-bottom:16px">
+      <div class="dp-section-title">Orders Loaded</div>
+      <div class="dp-route-chips" id="dp-route-chips"></div>
+    </div>
+
+    <!-- Plan button -->
+    <div id="dp-plan-wrap" style="display:none;margin-bottom:16px">
+      <button class="dp-plan-btn" id="dp-plan-btn" onclick="runDailyPlan()">&#x25B6; Plan All Routes</button>
+      <span id="dp-plan-status" style="font-size:11px;color:#6b7399;margin-left:14px"></span>
+    </div>
+    <div id="dp-progress-wrap" style="display:none;background:#13161f;border:1px solid #262a3e;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;color:#6b7399;font-family:'Barlow Condensed',sans-serif;margin-bottom:6px" id="dp-progress-label">Planning...</div>
+      <div style="background:#0d0f18;border-radius:4px;height:6px;overflow:hidden"><div id="dp-progress-bar" style="height:100%;background:linear-gradient(90deg,#f59e0b,#f97316);border-radius:4px;width:0%;transition:width .3s"></div></div>
+    </div>
+
+    <!-- Results -->
+    <div id="dp-results"></div>
+  </div>
+</div>
+
+<script>
+// ── DAILY PLAN ────────────────────────────────────────────────────────────────
+var _dailyOrders  = {};   // route → [enriched stop objects]
+var _dailyReview  = [];   // items for manual review
+var _dailyMode    = 'morning';
+var _dailyRunning = false;
+
+// Time windows (minutes from midnight) per route per mode
+var DAILY_WINDOWS = {
+  morning: {
+    'Route 1': {depart:360,  returnBy:720,  label:'6:00 AM → Noon',        maxStops:7,  color:'#ef4444'},
+    'Route 3': {depart:435,  returnBy:720,  label:'7:15 AM → Noon',        color:'#22c55e'},
+    'Route 4': {depart:435,  returnBy:720,  label:'7:15 AM → Noon',        color:'#f59e0b'},
+    'Route 5': {depart:435,  returnBy:720,  label:'7:15 AM → Noon',        color:'#a855f7'},
+    'Route 6': {depart:495,  returnBy:1020, label:'8:15 AM → 5 PM (all day)', color:'#14b8a6'},
+    'Route 7': {depart:495,  returnBy:1020, label:'8:15 AM → 5 PM (all day)', color:'#f97316'},
+    'Route 8': {depart:495,  returnBy:900,  label:'8:15 AM → 3 PM (Lumber City)', color:'#ec4899', softReturn:true}
+  },
+  afternoon: {
+    'Route 3': {depart:735, returnBy:1020, label:'12:15 PM → 5 PM', color:'#22c55e'},
+    'Route 4': {depart:735, returnBy:1020, label:'12:15 PM → 5 PM', color:'#f59e0b'},
+    'Route 5': {depart:735, returnBy:1020, label:'12:15 PM → 5 PM', color:'#a855f7'},
+    'Route 7': {depart:735, returnBy:1020, label:'12:15 PM → 5 PM', color:'#f97316'},
+    'Route 8': {depart:735, returnBy:1020, label:'12:15 PM → 5 PM', color:'#ec4899'}
+  }
+};
+
+var VALID_ROUTES = {'1':'Route 1','3':'Route 3','4':'Route 4','5':'Route 5','6':'Route 6','7':'Route 7','8':'Route 8'};
+
+function setDailyMode(mode) {
+  _dailyMode = mode;
+  document.getElementById('dp-mode-morning').classList.toggle('active', mode==='morning');
+  document.getElementById('dp-mode-afternoon').classList.toggle('active', mode==='afternoon');
+  if (Object.keys(_dailyOrders).length) renderDailyPreview();
+}
+
+// ── CSV PARSER ────────────────────────────────────────────────────────────────
+function parseDailyCSV(text) {
+  // Normalize line endings
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+
+  // Parse as RFC-4180 CSV
+  function parseRow(line) {
+    var result=[], cur='', inQ=false;
+    for (var i=0;i<line.length;i++) {
+      var c=line[i];
+      if (c==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+      else if (c===','&&!inQ){ result.push(cur);cur=''; }
+      else cur+=c;
+    }
+    result.push(cur);
+    return result;
+  }
+
+  // Find header row (contains 'Cust' and 'Route')
+  var headerRow=null, headerIdx=-1;
+  for (var i=0;i<Math.min(lines.length,6);i++) {
+    var cols=parseRow(lines[i]);
+    if (cols.some(function(c){return c.indexOf('Cust')!==-1;}) && cols.some(function(c){return c.trim()==='Route';})) {
+      headerRow=cols.map(function(c){return c.trim().replace(/\n/g,' ');});
+      headerIdx=i;
+      break;
+    }
+  }
+  if (!headerRow) return {stops:{},review:[]};
+
+  // Column indices
+  function colIdx(name) { return headerRow.findIndex(function(h){return h.toLowerCase().indexOf(name.toLowerCase())!==-1;}); }
+  var iCust = colIdx('Cust #'); if(iCust<0) iCust=colIdx('Cust');
+  var iRoute = headerRow.lastIndexOf(headerRow.filter(function(h){return h==='Route';})[0]);
+  var iName  = colIdx('Name'); // long name
+  var iSName = colIdx('Short Name');
+  var iCity  = colIdx('City');
+  var iNote  = colIdx('Note');
+  var iNAT   = colIdx('NAT');
+  var iRT    = headerRow.findIndex(function(h){return h.indexOf('RT')!==-1&&h.indexOf('Status')!==-1;});
+  var iTotal = colIdx('Total');
+  var iDate  = colIdx('Date');
+
+  var stops={}, review=[];
+  var allC = null; // lazy-load customer DB for GPS
+
+  for (var ri=headerIdx+1;ri<lines.length;ri++) {
+    var line=lines[ri].trim();
+    if (!line) continue;
+    var row=parseRow(line);
+    if (row.length < 10) continue;
+
+    var custNum  = (row[iCust]||'').trim();
+    var routeVal = (row[iRoute]||'').trim();
+    var name     = (row[iName]||'').trim();
+    var city     = (row[iCity]||'').trim();
+    var note     = (row[iNote]||'').trim();
+    var nat      = (row[iNAT]||'').trim();
+    var rt       = (iRT>=0?(row[iRT]||''):'').trim();
+    var totalStr = (row[iTotal]||'').trim();
+    var total    = parseFloat(totalStr) || 0;
+
+    if (!custNum) continue;
+
+    // Filter: ignore $0 + no NAT + no RT (unless HOLD → review)
+    var isZeroNoStatus = (total===0 && nat==='' && rt==='');
+    if (isZeroNoStatus && note.toUpperCase().indexOf('HOLD')===-1) continue;
+
+    // Filter: ignore Route 0 and Route 2 (local)
+    if (routeVal==='0' || routeVal==='2') continue;
+
+    // Manual review: Route H or HOLD note
+    var isHold = note.toUpperCase().indexOf('HOLD')!==-1;
+    var isRouteH = routeVal==='H' || !(routeVal in VALID_ROUTES);
+    if (isHold || isRouteH) {
+      // Don't add duplicate reviews for same cust+issue
+      var alreadyIn = review.some(function(r){return r.custNum===custNum;});
+      if (!alreadyIn) {
+        review.push({custNum:custNum, name:name, city:city, note:note,
+          suggestedRoute: isRouteH?'':routeVal, reason: isHold?'HOLD':'Unknown Route ('+routeVal+')'});
+      }
+      continue;
+    }
+
+    // Enrich with GPS from CUSTOMERS database
+    if (!allC) allC = Object.values(ROUTES_DATA).flat();
+    var cust = allC.find(function(c){return String(c.CustomerNumber)===String(custNum);});
+
+    var routeName = VALID_ROUTES[routeVal];
+    if (!stops[routeName]) stops[routeName]=[];
+
+    // Deduplicate: one stop per customer per route
+    var existing = stops[routeName].find(function(s){return s.CustomerNumber===custNum;});
+    if (!existing) {
+      stops[routeName].push({
+        CustomerNumber: custNum,
+        CompanyName: name,
+        City: city,
+        lat: cust?cust.lat:null,
+        lon: cust?cust.lon:null
+      });
+    }
+  }
+  return {stops:stops, review:review};
+}
+
+function handleDailyUpload(input, uploadMode) {
+  var file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var text = e.target.result;
+    var parsed = parseDailyCSV(text);
+
+    if (uploadMode === 'load') {
+      _dailyOrders = parsed.stops;
+      _dailyReview = parsed.review;
+    } else {
+      // Merge: add new stops, keep existing, deduplicate
+      for (var route in parsed.stops) {
+        if (!_dailyOrders[route]) _dailyOrders[route] = [];
+        parsed.stops[route].forEach(function(s){
+          var exists = _dailyOrders[route].find(function(e){return e.CustomerNumber===s.CustomerNumber;});
+          if (!exists) _dailyOrders[route].push(s);
+        });
+      }
+      // Merge review items
+      parsed.review.forEach(function(r){
+        var exists = _dailyReview.find(function(e){return e.custNum===r.custNum;});
+        if (!exists) _dailyReview.push(r);
+      });
+    }
+
+    var totalStops = Object.values(_dailyOrders).reduce(function(s,a){return s+a.length;},0);
+    var totalRoutes = Object.keys(_dailyOrders).length;
+    document.getElementById('dp-upload-status').textContent =
+      (uploadMode==='load'?'Loaded':'Added')+': '+totalStops+' stops across '+totalRoutes+' routes from '+file.name;
+    renderDailyPreview();
+    renderDailyReview();
+  };
+  reader.readAsText(file);
+}
+
+// Drag & drop on the zone (Load mode)
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    var zone = document.getElementById('dp-drop-zone');
+    if (!zone) return;
+    zone.addEventListener('dragover', function(e){e.preventDefault();zone.classList.add('drag');});
+    zone.addEventListener('dragleave', function(){zone.classList.remove('drag');});
+    zone.addEventListener('drop', function(e){
+      e.preventDefault(); zone.classList.remove('drag');
+      var file = e.dataTransfer.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        var parsed = parseDailyCSV(ev.target.result);
+        _dailyOrders = parsed.stops; _dailyReview = parsed.review;
+        var total = Object.values(_dailyOrders).reduce(function(s,a){return s+a.length;},0);
+        document.getElementById('dp-upload-status').textContent = 'Loaded: '+total+' stops from '+file.name;
+        renderDailyPreview(); renderDailyReview();
+      };
+      reader.readAsText(file);
+    });
+  });
+})();
+
+function renderDailyReview() {
+  var wrap = document.getElementById('dp-review-wrap');
+  var list = document.getElementById('dp-review-list');
+  if (!_dailyReview.length) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  document.getElementById('dp-review-count').textContent = _dailyReview.length;
+  var options = '<option value="">-- Route --</option>'+
+    Object.keys(VALID_ROUTES).map(function(k){return '<option value="'+VALID_ROUTES[k]+'">Route '+k+'</option>';}).join('');
+  list.innerHTML = _dailyReview.map(function(item, idx){
+    return '<div class="dp-review-item">'+
+      '<span class="dp-warn-badge">'+item.reason+'</span>'+
+      '<span style="flex:1;font-weight:700;color:#e2e6f3">'+item.name+'</span>'+
+      '<span style="color:#6b7399">'+item.city+'</span>'+
+      (item.note?'<span style="color:#3a4060;font-size:10px">'+item.note+'</span>':'')+
+      '<select class="dp-review-route-sel" onchange="assignReviewItem('+idx+',this.value)">'+options+'</select>'+
+      '<button style="background:none;border:none;color:#6b7399;cursor:pointer;font-size:14px" onclick="dismissReviewItem('+idx+')" title="Dismiss">&#x2715;</button>'+
+      '</div>';
+  }).join('');
+}
+
+function assignReviewItem(idx, routeName) {
+  var item = _dailyReview[idx];
+  if (!routeName || !item) return;
+  var allC = Object.values(ROUTES_DATA).flat();
+  var cust = allC.find(function(c){return String(c.CustomerNumber)===String(item.custNum);});
+  if (!_dailyOrders[routeName]) _dailyOrders[routeName]=[];
+  var exists = _dailyOrders[routeName].find(function(s){return s.CustomerNumber===item.custNum;});
+  if (!exists) {
+    _dailyOrders[routeName].push({
+      CustomerNumber: item.custNum, CompanyName: item.name, City: item.city,
+      lat: cust?cust.lat:null, lon: cust?cust.lon:null
+    });
+  }
+  _dailyReview.splice(idx,1);
+  renderDailyReview();
+  renderDailyPreview();
+}
+
+function dismissReviewItem(idx) {
+  _dailyReview.splice(idx,1);
+  renderDailyReview();
+}
+
+function renderDailyPreview() {
+  var wrap = document.getElementById('dp-preview-wrap');
+  var chips = document.getElementById('dp-route-chips');
+  var windows = DAILY_WINDOWS[_dailyMode];
+  var hasStops = Object.keys(_dailyOrders).some(function(r){return _dailyOrders[r].length>0;});
+  if (!hasStops) { wrap.style.display='none'; document.getElementById('dp-plan-wrap').style.display='none'; return; }
+  wrap.style.display='block';
+  document.getElementById('dp-plan-wrap').style.display='block';
+
+  chips.innerHTML = '';
+  Object.keys(_dailyOrders).sort().forEach(function(route){
+    var stops = _dailyOrders[route];
+    if (!stops.length) return;
+    var win = windows[route];
+    if (!win) return; // route not in this mode
+    var col = win.color;
+    var maxWarn = (win.maxStops && stops.length > win.maxStops) ?
+      '<span class="dp-warn-badge dp-over-badge">&#x26A0; '+stops.length+' stops — check capacity</span>' : '';
+    var chip = document.createElement('div');
+    chip.className = 'dp-route-chip';
+    chip.innerHTML = '<div class="dp-route-chip-name" style="color:'+col+'">'+route+'</div>'+
+      '<div class="dp-route-chip-stops">'+stops.length+' stop'+(stops.length!==1?'s':'')+maxWarn+'</div>'+
+      '<div class="dp-route-chip-window">'+win.label+'</div>';
+    chips.appendChild(chip);
+  });
+}
+
+// ── DAILY PLAN RUNNER ─────────────────────────────────────────────────────────
+async function runDailyPlan() {
+  if (_dailyRunning) return;
+  _dailyRunning = true;
+  var windows = DAILY_WINDOWS[_dailyMode];
+  var routes = Object.keys(_dailyOrders).filter(function(r){return _dailyOrders[r].length && windows[r];});
+  if (!routes.length) { alert('No stops loaded for '+_dailyMode+' routes.'); _dailyRunning=false; return; }
+
+  document.getElementById('dp-plan-btn').disabled=true;
+  document.getElementById('dp-progress-wrap').style.display='block';
+  document.getElementById('dp-results').innerHTML='';
+
+  var results=[], total=routes.length*3, done=0;
+
+  for (var ri=0;ri<routes.length;ri++) {
+    var route = routes[ri];
+    var win   = windows[route];
+    var stops = _dailyOrders[route];
+    var color = win.color;
+
+    function setDpProg(pct,label){
+      document.getElementById('dp-progress-bar').style.width=Math.min(pct,100)+'%';
+      document.getElementById('dp-progress-label').textContent=label;
+    }
+
+    // ── Our Parameters (as assigned) ──
+    setDpProg(done/total*95, route+' — Our Parameters...');
+    var cStops = stops.slice(); // GPS already enriched from parse
+    var cTrip  = await osrmRoute(cStops);
+    done++;
+
+    // ── Fully Optimized (NN) ──
+    setDpProg(done/total*95, route+' — Optimized...');
+    var oStops = nnOptimize(stops);
+    var oTrip  = await osrmRoute(oStops);
+    done++;
+
+    // ── Fewest Trucks VRP (within time window) ──
+    setDpProg(done/total*95, route+' — VRP...');
+    var vrpBudget = win.returnBy - win.depart; // minutes available
+    var vrpTrucks = await solveVRPWithWindow(stops, win.depart, win.returnBy, win.maxStops||999);
+    done++;
+
+    // Stats
+    var cMi    = cTrip ? cTrip.distanceMi  : null;
+    var cMin   = cTrip ? cTrip.durationMin  : null;
+    var oMi    = oTrip ? oTrip.distanceMi  : null;
+    var oMin   = oTrip ? oTrip.durationMin  : null;
+    var cTotal = cMin!=null ? cMin + stops.length*STOP_MIN : null;
+    var oTotal = oMin!=null ? oMin + stops.length*STOP_MIN : null;
+    var cReturn = cTotal!=null ? win.depart+cTotal : null;
+    var oReturn = oTotal!=null ? win.depart+oTotal : null;
+
+    results.push({
+      route:route, color:color, win:win,
+      cStops:cStops, oStops:oStops,
+      cMi:cMi, cMin:cMin, cTotal:cTotal, cReturn:cReturn,
+      oMi:oMi, oMin:oMin, oTotal:oTotal, oReturn:oReturn,
+      vrpTrucks:vrpTrucks,
+      late: cReturn!=null && cReturn>win.returnBy,
+      oLate: oReturn!=null && oReturn>win.returnBy
+    });
+
+    await new Promise(function(r){setTimeout(r,20);});
+  }
+
+  setDpProg(100,'Done!');
+  setTimeout(function(){
+    document.getElementById('dp-progress-wrap').style.display='none';
+    document.getElementById('dp-plan-btn').disabled=false;
+  }, 700);
+
+  renderDailyResults(results);
+  _dailyRunning=false;
+}
+
+// VRP with explicit time window (daily plan version)
+async function solveVRPWithWindow(stops, departMin, returnByMin, maxStops) {
+  var budget = returnByMin - departMin;
+  var withGps  = stops.filter(function(s){return s.lat&&s.lon;});
+  var noGps    = stops.filter(function(s){return !s.lat||!s.lon;});
+  var remaining = withGps.slice().sort(function(a,b){return hav(DEPOT,a)-hav(DEPOT,b);});
+  var trucks = [];
+
+  while (remaining.length) {
+    var truck=[], cur={lat:DEPOT.lat,lon:DEPOT.lon}, usedMin=0;
+    while (remaining.length && truck.length < maxStops) {
+      var bi=0, bd=Infinity;
+      remaining.forEach(function(s,i){var d=hav(cur,s);if(d<bd){bd=d;bi=i;}});
+      var cand = remaining[bi];
+      var legMin = hav(cur,cand)/45*60;
+      var retMin = hav(cand,DEPOT)/45*60;
+      if (usedMin + legMin + STOP_MIN + retMin > budget) break;
+      truck.push(cand); usedMin+=legMin+STOP_MIN; cur={lat:cand.lat,lon:cand.lon};
+      remaining.splice(bi,1);
+    }
+    if (!truck.length){remaining.shift();continue;}
+    var trip = await osrmTrip(truck);
+    var distMi  = trip?trip.distanceMi:hav(DEPOT,cur)*2;
+    var driveMin = trip?trip.durationMin:distMi/45*60;
+    var stopMin = truck.length*STOP_MIN;
+    var totalMin= driveMin+stopMin;
+    var retMin2 = departMin+totalMin;
+    trucks.push({stops:truck,distMi:distMi,driveMin:driveMin,stopMin:stopMin,
+      totalMin:totalMin,returnMin:retMin2,returnTimeStr:minsToTime(retMin2),
+      late:retMin2>returnByMin});
+    await new Promise(function(r){setTimeout(r,20);});
+  }
+  if (noGps.length && trucks.length) trucks[trucks.length-1].stops=trucks[trucks.length-1].stops.concat(noGps);
+  if (!trucks.length && stops.length) {
+    // Fallback: all stops in one truck
+    var trip=await osrmTrip(withGps);
+    var distMi=trip?trip.distanceMi:0;
+    var driveMin=trip?trip.durationMin:0;
+    var totalMin=driveMin+stops.length*STOP_MIN;
+    trucks.push({stops:withGps.concat(noGps),distMi:distMi,driveMin:driveMin,stopMin:stops.length*STOP_MIN,
+      totalMin:totalMin,returnMin:departMin+totalMin,returnTimeStr:minsToTime(departMin+totalMin),late:(departMin+totalMin)>returnByMin});
+  }
+  return trucks;
+}
+
+function renderDailyResults(results) {
+  var div = document.getElementById('dp-results');
+  var VRP_COLORS=['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899'];
+
+  // Summary row
+  var totalMiC  = results.reduce(function(s,r){return s+(r.cMi||0);},0);
+  var totalMiO  = results.reduce(function(s,r){return s+(r.oMi||0);},0);
+  var totalMiSaved = totalMiC - totalMiO;
+  var totalStops = results.reduce(function(s,r){return s+r.cStops.length;},0);
+  var lateRoutes = results.filter(function(r){return r.late;}).map(function(r){return r.route;});
+
+  var html = '<div class="dp-stat-row">'+
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8">'+totalMiC.toFixed(1)+'</div><div class="dp-stat-lbl">Our Params Miles</div></div>'+
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e">'+totalMiO.toFixed(1)+'</div><div class="dp-stat-lbl">Optimized Miles</div></div>'+
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:'+(totalMiSaved>0?'#22c55e':'#6b7399')+'">'+( totalMiSaved>0?'−':'')+Math.abs(totalMiSaved).toFixed(1)+'</div><div class="dp-stat-lbl">Miles '+(totalMiSaved>0?'Saved':'Added')+'</div></div>'+
+    '<div class="dp-stat"><div class="dp-stat-val">'+totalStops+'</div><div class="dp-stat-lbl">Total Stops</div></div>'+
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:'+(lateRoutes.length?'#ef4444':'#22c55e')+'">'+( lateRoutes.length?lateRoutes.length:'✓')+'</div><div class="dp-stat-lbl">Routes Over Window</div></div>'+
+    '</div>';
+
+  // Per-route result cards
+  results.forEach(function(r, idx) {
+    var lateFlag = r.late ? '<span class="dp-warn-badge dp-over-badge">&#x26A0; Over Time Window</span>' : '';
+    var savedMi  = (r.cMi&&r.oMi) ? (r.cMi-r.oMi) : null;
+    var vrpCount = r.vrpTrucks ? r.vrpTrucks.length : 1;
+    var vrpLate  = r.vrpTrucks ? r.vrpTrucks.some(function(t){return t.late;}) : false;
+
+    html += '<div class="dp-route-result">'+
+      '<div class="dp-route-result-header" onclick="toggleDpResult('+idx+')">'+
+        '<span style="width:12px;height:12px;border-radius:50%;background:'+r.color+';display:inline-block;flex-shrink:0"></span>'+
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:14px;color:#e2e6f3;flex:1">'+r.route+'</span>'+
+        '<span style="font-size:11px;color:#6b7399;margin-right:8px">'+r.cStops.length+' stops &middot; '+r.win.label+'</span>'+
+        (savedMi!==null?'<span style="font-size:11px;color:'+(savedMi>0?'#22c55e':'#6b7399')+';margin-right:8px">'+(savedMi>0?'−':'+')+ Math.abs(savedMi).toFixed(1)+' mi</span>':'')+
+        lateFlag+
+        '<button style="background:none;border:1px solid #262a3e;border-radius:4px;color:#818cf8;font-size:10px;padding:3px 8px;cursor:pointer;margin-left:6px" onclick="event.stopPropagation();openDpMap('+idx+')" title="View map">&#x1F5FA;</button>'+
+        '<span style="color:#3a4060;margin-left:8px;font-size:12px" id="dp-chevron-'+idx+'">&#x25BE;</span>'+
+      '</div>'+
+      '<div class="dp-route-result-body" id="dp-body-'+idx+'">'+
+        // Stats row
+        '<div class="dp-stat-row" style="margin-bottom:14px">'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cMi?r.cMi.toFixed(1):'—')+'</div><div class="dp-stat-lbl">Our Params Mi</div></div>'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cTotal?Math.round(r.cTotal)+'min':'—')+'</div><div class="dp-stat-lbl">Our Params Time</div></div>'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cReturn?minsToTime(r.cReturn):'—')+'</div><div class="dp-stat-lbl">Est. Return</div></div>'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">'+(r.oMi?r.oMi.toFixed(1):'—')+'</div><div class="dp-stat-lbl">Opt Mi</div></div>'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">'+(r.oReturn?minsToTime(r.oReturn):'—')+'</div><div class="dp-stat-lbl">Opt Return</div></div>'+
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#f59e0b;font-size:14px">'+vrpCount+(vrpLate?' ⚠':'')+' truck'+(vrpCount!==1?'s':'')+'</div><div class="dp-stat-lbl">VRP Trucks</div></div>'+
+        '</div>'+
+        // Stop lists
+        '<div class="dp-compare-row">'+
+          // Our Parameters stops
+          '<div class="dp-compare-col">'+
+            '<div class="dp-compare-col-title" style="color:#818cf8">Our Parameters</div>'+
+            r.cStops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#818cf8">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,24)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
+          '</div>'+
+          // Optimized stops
+          '<div class="dp-compare-col">'+
+            '<div class="dp-compare-col-title" style="color:#22c55e">Fully Optimized</div>'+
+            r.oStops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#22c55e">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,24)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
+          '</div>'+
+          // VRP trucks
+          '<div class="dp-compare-col">'+
+            '<div class="dp-compare-col-title" style="color:#f59e0b">Fewest Trucks (VRP)</div>'+
+            (r.vrpTrucks||[]).map(function(t,ti){
+              var tc=VRP_COLORS[ti%VRP_COLORS.length];
+              return '<div style="margin-bottom:8px"><div style="font-size:10px;color:'+tc+';font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-bottom:2px">Truck '+(ti+1)+' — '+t.stops.length+' stops — '+t.distMi.toFixed(1)+'mi — back '+t.returnTimeStr+(t.late?' ⚠':'')+'</div>'+
+                t.stops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:'+tc+'">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,22)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
+                '</div>';
+            }).join('')+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  });
+
+  div.innerHTML = html;
+  // Store results for map access
+  div._dpResults = results;
+}
+
+function toggleDpResult(idx) {
+  var body = document.getElementById('dp-body-'+idx);
+  var chev = document.getElementById('dp-chevron-'+idx);
+  var open = body.classList.toggle('open');
+  if (chev) chev.innerHTML = open ? '&#x25B4;' : '&#x25BE;';
+}
+
+async function openDpMap(idx) {
+  var div = document.getElementById('dp-results');
+  var results = div._dpResults;
+  if (!results || !results[idx]) return;
+  var r = results[idx];
+  document.getElementById('an-map-title').textContent = r.route+' — '+_dailyMode+' — '+r.win.label;
+  document.getElementById('an-map-overlay').classList.add('open');
+  document.getElementById('an-map-loading').style.display='flex';
+  document.getElementById('an-map-layers').style.display='flex';
+  document.getElementById('an-map-vrp-legend').style.display='none';
+  document.getElementById('an-layer-constrained').textContent='📋 Our Parameters';
+  document.getElementById('an-layer-optimized').textContent='⚡ Optimized';
+  document.body.style.overflow='hidden';
+
+  setTimeout(async function(){
+    initAnalysisMap();
+    _analysisMap.invalidateSize();
+    clearAnalysisLayers();
+    var VRP_COLORS=['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7'];
+    var allBounds = [[DEPOT.lat, DEPOT.lon]];
+
+    // Depot
+    var dm = L.circleMarker([DEPOT.lat,DEPOT.lon],{radius:9,color:'#fff',fillColor:'#fff',fillOpacity:1,weight:2}).bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
+    _analysisLayers.push(dm);
+
+    // Constrained (Our Params)
+    if (_activeLayers.constrained) {
+      var cTrip = await osrmRoute(r.cStops.filter(function(s){return s.lat&&s.lon;}));
+      if (cTrip&&cTrip.geometry) {
+        var ln=L.polyline(cTrip.geometry.coordinates.map(function(c){return [c[1],c[0]];}),{color:'#818cf8',weight:3.5,opacity:.8,dashArray:'6,4'}).addTo(_analysisMap);
+        _analysisLayers.push(ln);
+      }
+      r.cStops.forEach(function(s,si){
+        if (!s.lat||!s.lon) return; allBounds.push([s.lat,s.lon]);
+        var m=L.circleMarker([s.lat,s.lon],{radius:6,color:'#818cf8',fillColor:'#818cf8',fillOpacity:.85,weight:1.5})
+          .bindPopup('<strong>'+(si+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'<br><span style="color:#818cf8">Our Params</span>').addTo(_analysisMap);
+        _analysisLayers.push(m);
+        var lbl=L.divIcon({className:'',html:'<div style="background:#818cf8;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:8px;border-radius:8px;padding:1px 3px;margin-top:-7px;margin-left:-5px">'+(si+1)+'</div>',iconSize:[16,12]});
+        _analysisLayers.push(L.marker([s.lat,s.lon],{icon:lbl,interactive:false}).addTo(_analysisMap));
+      });
+    }
+
+    // Optimized
+    if (_activeLayers.optimized) {
+      var oTrip = await osrmRoute(r.oStops.filter(function(s){return s.lat&&s.lon;}));
+      if (oTrip&&oTrip.geometry) {
+        var ln2=L.polyline(oTrip.geometry.coordinates.map(function(c){return [c[1],c[0]];}),{color:'#22c55e',weight:3.5,opacity:.8}).addTo(_analysisMap);
+        _analysisLayers.push(ln2);
+      }
+      r.oStops.forEach(function(s,si){
+        if (!s.lat||!s.lon) return; allBounds.push([s.lat,s.lon]);
+        var m=L.circleMarker([s.lat,s.lon],{radius:6,color:'#22c55e',fillColor:'#22c55e',fillOpacity:.85,weight:1.5})
+          .bindPopup('<strong>'+(si+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'<br><span style="color:#22c55e">Optimized</span>').addTo(_analysisMap);
+        _analysisLayers.push(m);
+        var lbl2=L.divIcon({className:'',html:'<div style="background:#22c55e;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:8px;border-radius:8px;padding:1px 3px;margin-top:-7px;margin-left:-5px">'+(si+1)+'</div>',iconSize:[16,12]});
+        _analysisLayers.push(L.marker([s.lat,s.lon],{icon:lbl2,interactive:false}).addTo(_analysisMap));
+      });
+    }
+
+    // VRP trucks legend
+    var legHtml='<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;text-transform:uppercase;color:#6b7399;margin-bottom:5px">VRP Trucks</div>';
+    for (var ti=0;ti<(r.vrpTrucks||[]).length;ti++) {
+      var t=r.vrpTrucks[ti], tc=VRP_COLORS[ti%VRP_COLORS.length];
+      legHtml+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><div style="width:14px;height:2px;background:'+tc+'"></div><span style="font-size:9px;color:#c4c9e2">Truck '+(ti+1)+': '+t.stops.length+' stops — '+t.returnTimeStr+(t.late?' ⚠':'')+'</span></div>';
+    }
+    document.getElementById('an-map-vrp-legend').innerHTML=legHtml;
+    document.getElementById('an-map-vrp-legend').style.display='block';
+
+    if (allBounds.length>1) _analysisMap.fitBounds(allBounds,{padding:[30,30]});
+    document.getElementById('an-map-loading').style.display='none';
+  }, 80);
+}
+</script>
 
 </body>
 </html>
