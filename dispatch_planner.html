@@ -260,7 +260,9 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
 
 /* ── DAILY PLAN — LIGHT THEME ── */
-#sec-DailyPlan{background:#f0f4ff}
+#sec-DailyPlan{background:#f0f4ff;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c7d2fe transparent}
+#sec-DailyPlan::-webkit-scrollbar{width:5px}
+#sec-DailyPlan::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:4px}
 #sec-DailyPlan .dp-section-title{color:#2952cc}
 #sec-DailyPlan .dp-mode-btn{background:#fff;border-color:#c7d2fe;color:#4b5563}
 #sec-DailyPlan .dp-mode-btn.active{background:#eff2ff;border-color:#2952cc;color:#2952cc}
@@ -4292,7 +4294,7 @@ async function openCompareMap(idx) {
 </script>
 
 <!-- ANALYSIS PANEL -->
-<div class="psec" id="sec-Analysis">
+<div class="psec" id="sec-Analysis" style="overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c7d2fe transparent">
   <div style="padding:20px;max-width:1100px;margin:0 auto">
     <div style="margin-bottom:18px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:2px;text-transform:uppercase;color:#111827;margin-bottom:4px">&#x1F4CA; Route Analysis</div>
