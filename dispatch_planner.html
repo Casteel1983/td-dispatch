@@ -4690,6 +4690,13 @@ function renderDailyPreview() {
   });
 }
 
+function setDpProg(pct, label) {
+  var bar = document.getElementById('dp-progress-bar');
+  var lbl = document.getElementById('dp-progress-label');
+  if (bar) bar.style.width = Math.min(pct,100) + '%';
+  if (lbl) lbl.textContent = label;
+}
+
 // ── DAILY PLAN RUNNER ─────────────────────────────────────────────────────────
 async function runDailyPlan() {
   if (_dailyRunning) return;
@@ -4701,11 +4708,6 @@ async function runDailyPlan() {
   document.getElementById('dp-plan-btn').disabled = true;
   document.getElementById('dp-progress-wrap').style.display = 'block';
   document.getElementById('dp-results').innerHTML = '';
-
-  function setDpProg(pct, label) {
-    document.getElementById('dp-progress-bar').style.width = Math.min(pct,100) + '%';
-    document.getElementById('dp-progress-label').textContent = label;
-  }
 
   var perRouteResults = [];
   var total = routes.length * 2; // constrained + optimized per route
