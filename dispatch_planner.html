@@ -69,7 +69,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .stab-bar{display:flex;border-bottom:1px solid #d1d5db;flex-shrink:0;background:#f8faff}
 .stab{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:9px 18px 7px;border:none;background:none;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s;white-space:nowrap}
 .stab:hover{color:#111827}
-.stab.active{color:#fff;border-bottom-color:#fff}
+.stab.active{color:#2952cc;border-bottom-color:#2952cc}
 .log-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;background:#f0f4ff;vertical-align:middle;color:#6b7280}
 .log-badge.has-logs{background:#22c55e22;color:#22c55e}
 
@@ -4685,9 +4685,15 @@ function renderDailyPreview() {
       '<span class="dp-warn-badge dp-over-badge">&#x26A0; '+stops.length+' stops — check capacity</span>' : '';
     var chip = document.createElement('div');
     chip.className = 'dp-route-chip';
+    chip.style.cursor = 'pointer';
+    chip.title = 'Click to preview on map';
     chip.innerHTML = '<div class="dp-route-chip-name" style="color:'+col+'">'+route+'</div>'+
       '<div class="dp-route-chip-stops">'+stops.length+' stop'+(stops.length!==1?'s':'')+maxWarn+'</div>'+
       '<div class="dp-route-chip-window">'+win.label+'</div>';
+    // Preview stops on map when chip clicked
+    chip.addEventListener('click', function() {
+      drawDailyPlanOnMap({route:route, color:col, cStops:stops});
+    });
     chips.appendChild(chip);
   });
 }
@@ -4913,7 +4919,55 @@ async function packIntoTrucks(pool, departMin, returnByMin, maxStops, groupLabel
   return trucks;
 }
 
+// Draw daily plan stops on the EXISTING main Leaflet map (no modal)
+function drawDailyPlanOnMap(r) {
+  if (!leafmap) return;
+  // Clear existing markers and line
+  mmarkers.forEach(function(m){ leafmap.removeLayer(m); }); mmarkers = [];
+  if (mline) { leafmap.removeLayer(mline); mline = null; }
+
+  var color = r.color;
+  var stops = r.cStops; // default to Our Parameters order
+  var bounds = [[DEPOT.lat, DEPOT.lon]];
+
+  // Depot
+  var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:8, color:color, fillColor:'#fff', fillOpacity:1, weight:3})
+    .bindPopup('<strong>DEPOT — Tifton, GA</strong>').addTo(leafmap);
+  mmarkers.push(dm);
+
+  var pts = [];
+  stops.forEach(function(s, i) {
+    if (!s.lat || !s.lon) return;
+    bounds.push([s.lat, s.lon]);
+    pts.push([s.lat, s.lon]);
+    var m = L.circleMarker([s.lat, s.lon], {radius:7, color:color, fillColor:color, fillOpacity:0.85, weight:2})
+      .bindPopup('<div style="font-size:12px"><strong>'+(i+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'</div>')
+      .addTo(leafmap);
+    mmarkers.push(m);
+    // Number label
+    var icon = L.divIcon({className:'', html:'<div style="background:'+color+';color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;border-radius:10px;padding:1px 4px;margin-top:-8px;margin-left:-6px">'+(i+1)+'</div>', iconSize:[20,14]});
+    var lbl = L.marker([s.lat, s.lon], {icon:icon, interactive:false}).addTo(leafmap);
+    mmarkers.push(lbl);
+    // City label
+    var cityIcon = L.divIcon({className:'', html:'<div style="background:rgba(255,255,255,.85);color:#1f2937;border:1px solid '+color+';font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:8px;margin-left:4px">'+(s.City||'')+'</div>', iconSize:[80,16]});
+    mmarkers.push(L.marker([s.lat, s.lon], {icon:cityIcon, interactive:false}).addTo(leafmap));
+  });
+
+  // Draw route line
+  if (pts.length > 1) {
+    mline = L.polyline([[DEPOT.lat,DEPOT.lon]].concat(pts).concat([[DEPOT.lat,DEPOT.lon]]),
+      {color:color, weight:3, opacity:0.7}).addTo(leafmap);
+  }
+
+  if (bounds.length > 1) leafmap.fitBounds(bounds, {padding:[30,30]});
+}
+
 function renderDailyResults(results, vrpResult) {
+  // Sort results by canonical route order
+  var routeOrder = ['Route 1','Local','Route 3','Route 4','Route 5','Route 6','Route 7','Route 8'];
+  results.sort(function(a,b){
+    return (routeOrder.indexOf(a.route)||99) - (routeOrder.indexOf(b.route)||99);
+  });
   // Sort results into the canonical route order
   results.sort(function(a, b) {
     return DAILY_ROUTE_ORDER.indexOf(a.route) - DAILY_ROUTE_ORDER.indexOf(b.route);
@@ -4987,7 +5041,7 @@ function renderDailyResults(results, vrpResult) {
         '<span style="font-size:11px;color:#6b7280;margin-right:8px">' + r.cStops.length + ' stops &middot; ' + r.win.label + '</span>' +
         (savedMi!==null ? '<span style="font-size:11px;color:' + (savedMi>0?'#22c55e':'#6b7280') + ';margin-right:8px">' + (savedMi>0?'−':'+') + Math.abs(savedMi).toFixed(1) + ' mi</span>' : '') +
         lateFlag +
-        '<button style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#818cf8;font-size:10px;padding:3px 8px;cursor:pointer;margin-left:6px" onclick="event.stopPropagation();openDpMap(' + idx + ')" title="View map">&#x1F5FA;</button>' +
+        '<button style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#2952cc;font-size:10px;padding:3px 8px;cursor:pointer;margin-left:6px" onclick="event.stopPropagation();drawDailyPlanOnMap(document.getElementById(\'dp-results\')._dpResults[' + idx + '])" title="Show on main map">&#x1F5FA; Map</button>' +
         '<span style="color:#9ca3af;margin-left:8px;font-size:12px" id="dp-chevron-' + idx + '">&#x25BE;</span>' +
       '</div>' +
       '<div class="dp-route-result-body" id="dp-body-' + idx + '">' +
