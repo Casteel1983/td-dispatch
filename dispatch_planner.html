@@ -1979,12 +1979,12 @@ function buildTabs(){
     var btn=document.createElement('button');
     btn.className='tbtn'+(route===activeRoute?' active':'');
     btn.style.borderBottomColor=route===activeRoute?color:'transparent';
-    btn.style.color=route===activeRoute?'#fff':'';
+    btn.style.color=route===activeRoute?'#2952cc':'';
     btn.innerHTML=route+'<span class="tbadge" style="color:'+color+'">'+custs.length+'</span>';
     btn.addEventListener('click',function(){
       activeRoute=route;
       document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active');b.style.borderBottomColor='transparent';b.style.color='';});
-      btn.classList.add('active');btn.style.borderBottomColor=color;btn.style.color='#fff';
+      btn.classList.add('active');btn.style.borderBottomColor=color;btn.style.color='#2952cc';
       showSection(route);
       var stops=getStops(route);if(stops.length) drawPreview(route); else drawRefMap(route);
     });
@@ -2001,7 +2001,7 @@ function buildTabs(){
     document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active');b.style.borderBottomColor='transparent';b.style.color='';});
     abtn.classList.add('active');
     abtn.style.borderBottomColor = '#818cf8';
-    abtn.style.color = '#fff';
+    abtn.style.color = '#2952cc';
     document.querySelectorAll('.psec').forEach(function(s){s.classList.remove('active');});
     document.getElementById('sec-Analysis').classList.add('active');
   });
@@ -2018,7 +2018,7 @@ function buildTabs(){
     document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active');b.style.borderBottomColor='transparent';b.style.color='';});
     dpbtn.classList.add('active');
     dpbtn.style.borderBottomColor = '#f59e0b';
-    dpbtn.style.color = '#fff';
+    dpbtn.style.color = '#2952cc';
     document.querySelectorAll('.psec').forEach(function(s){s.classList.remove('active');});
     document.getElementById('sec-DailyPlan').classList.add('active');
   });
@@ -4436,6 +4436,8 @@ var DAILY_WINDOWS = {
 };
 
 var VALID_ROUTES = {'1':'Route 1','3':'Route 3','4':'Route 4','5':'Route 5','6':'Route 6','7':'Route 7','8':'Route 8'};
+var DAILY_ROUTE_ORDER = ['Route 1','Route 3','Route 4','Route 5','Route 6','Route 7','Route 8'];
+var _dpMapLayers = [];  // layers added to the main leafmap by Daily Plan
 
 function setDailyMode(mode) {
   _dailyMode = mode;
@@ -4673,9 +4675,9 @@ function renderDailyPreview() {
   document.getElementById('dp-plan-wrap').style.display='block';
 
   chips.innerHTML = '';
-  Object.keys(_dailyOrders).sort().forEach(function(route){
+  DAILY_ROUTE_ORDER.forEach(function(route){
     var stops = _dailyOrders[route];
-    if (!stops.length) return;
+    if (!stops || !stops.length) return;
     var win = windows[route];
     if (!win) return; // route not in this mode
     var col = win.color;
@@ -4912,6 +4914,10 @@ async function packIntoTrucks(pool, departMin, returnByMin, maxStops, groupLabel
 }
 
 function renderDailyResults(results, vrpResult) {
+  // Sort results into the canonical route order
+  results.sort(function(a, b) {
+    return DAILY_ROUTE_ORDER.indexOf(a.route) - DAILY_ROUTE_ORDER.indexOf(b.route);
+  });
   var div = document.getElementById('dp-results');
   var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6','#06b6d4'];
 
@@ -5018,77 +5024,81 @@ function toggleDpResult(idx) {
   if (chev) chev.innerHTML = open ? '&#x25B4;' : '&#x25BE;';
 }
 
+function clearDpMapLayers() {
+  _dpMapLayers.forEach(function(l){ try { leafmap.removeLayer(l); } catch(e){} });
+  _dpMapLayers = [];
+}
+
 async function openDpMap(idx) {
   var div = document.getElementById('dp-results');
   var results = div._dpResults;
-  if (!results || !results[idx]) return;
+  if (!results || !results[idx] || !leafmap) return;
   var r = results[idx];
-  document.getElementById('an-map-title').textContent = r.route+' — '+_dailyMode+' — '+r.win.label;
-  document.getElementById('an-map-overlay').classList.add('open');
-  document.getElementById('an-map-loading').style.display='flex';
-  document.getElementById('an-map-layers').style.display='flex';
-  document.getElementById('an-map-vrp-legend').style.display='none';
-  document.getElementById('an-layer-constrained').textContent='📋 Our Parameters';
-  document.getElementById('an-layer-optimized').textContent='⚡ Optimized';
-  document.body.style.overflow='hidden';
 
-  setTimeout(async function(){
-    initAnalysisMap();
-    _analysisMap.invalidateSize();
-    clearAnalysisLayers();
-    var VRP_COLORS=['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7'];
-    var allBounds = [[DEPOT.lat, DEPOT.lon]];
+  // Clear Daily Plan layers + existing route-planner markers from the main map
+  clearDpMapLayers();
+  mmarkers.forEach(function(m){ leafmap.removeLayer(m); }); mmarkers=[];
+  if (mline){ leafmap.removeLayer(mline); mline=null; }
 
-    // Depot
-    var dm = L.circleMarker([DEPOT.lat,DEPOT.lon],{radius:9,color:'#fff',fillColor:'#fff',fillOpacity:1,weight:2}).bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
-    _analysisLayers.push(dm);
+  var allBounds = [[DEPOT.lat, DEPOT.lon]];
 
-    // Constrained (Our Params)
-    if (_activeLayers.constrained) {
-      var cTrip = await osrmRoute(r.cStops.filter(function(s){return s.lat&&s.lon;}));
-      if (cTrip&&cTrip.geometry) {
-        var ln=L.polyline(cTrip.geometry.coordinates.map(function(c){return [c[1],c[0]];}),{color:'#818cf8',weight:3.5,opacity:.8,dashArray:'6,4'}).addTo(_analysisMap);
-        _analysisLayers.push(ln);
-      }
-      r.cStops.forEach(function(s,si){
-        if (!s.lat||!s.lon) return; allBounds.push([s.lat,s.lon]);
-        var m=L.circleMarker([s.lat,s.lon],{radius:6,color:'#818cf8',fillColor:'#818cf8',fillOpacity:.85,weight:1.5})
-          .bindPopup('<strong>'+(si+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'<br><span style="color:#818cf8">Our Params</span>').addTo(_analysisMap);
-        _analysisLayers.push(m);
-        var lbl=L.divIcon({className:'',html:'<div style="background:#818cf8;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:8px;border-radius:8px;padding:1px 3px;margin-top:-7px;margin-left:-5px">'+(si+1)+'</div>',iconSize:[16,12]});
-        _analysisLayers.push(L.marker([s.lat,s.lon],{icon:lbl,interactive:false}).addTo(_analysisMap));
-      });
-    }
+  // Depot marker
+  var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:8, color:'#2952cc', fillColor:'#2952cc', fillOpacity:1, weight:2})
+    .bindPopup('<strong>DEPOT — Tifton, GA</strong>').addTo(leafmap);
+  _dpMapLayers.push(dm);
 
-    // Optimized
-    if (_activeLayers.optimized) {
-      var oTrip = await osrmRoute(r.oStops.filter(function(s){return s.lat&&s.lon;}));
-      if (oTrip&&oTrip.geometry) {
-        var ln2=L.polyline(oTrip.geometry.coordinates.map(function(c){return [c[1],c[0]];}),{color:'#22c55e',weight:3.5,opacity:.8}).addTo(_analysisMap);
-        _analysisLayers.push(ln2);
-      }
-      r.oStops.forEach(function(s,si){
-        if (!s.lat||!s.lon) return; allBounds.push([s.lat,s.lon]);
-        var m=L.circleMarker([s.lat,s.lon],{radius:6,color:'#22c55e',fillColor:'#22c55e',fillOpacity:.85,weight:1.5})
-          .bindPopup('<strong>'+(si+1)+'. '+(s.CompanyName||'')+'</strong><br>'+(s.City||'')+'<br><span style="color:#22c55e">Optimized</span>').addTo(_analysisMap);
-        _analysisLayers.push(m);
-        var lbl2=L.divIcon({className:'',html:'<div style="background:#22c55e;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:8px;border-radius:8px;padding:1px 3px;margin-top:-7px;margin-left:-5px">'+(si+1)+'</div>',iconSize:[16,12]});
-        _analysisLayers.push(L.marker([s.lat,s.lon],{icon:lbl2,interactive:false}).addTo(_analysisMap));
-      });
-    }
+  // Our Parameters route (blue dashed)
+  var cWithGps = r.cStops.filter(function(s){ return s.lat&&s.lon; });
+  var cTrip = await osrmRoute(cWithGps);
+  if (cTrip && cTrip.geometry) {
+    var cLine = L.polyline(cTrip.geometry.coordinates.map(function(c){ return [c[1],c[0]]; }),
+      {color:'#818cf8', weight:4, opacity:.85, dashArray:'7,4'}).addTo(leafmap);
+    _dpMapLayers.push(cLine);
+  }
+  r.cStops.forEach(function(s, i) {
+    if (!s.lat||!s.lon) return;
+    allBounds.push([s.lat, s.lon]);
+    var m = L.circleMarker([s.lat, s.lon], {radius:7, color:'#818cf8', fillColor:'#818cf8', fillOpacity:.9, weight:2})
+      .bindPopup('<div style="font-size:12px"><strong>' + (i+1) + '. ' + (s.CompanyName||'') + '</strong><br>' + (s.City||'') + '<br><span style="color:#818cf8">Our Parameters</span></div>')
+      .addTo(leafmap);
+    _dpMapLayers.push(m);
+    var icon = L.divIcon({className:'', html:'<div style="background:#818cf8;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;border-radius:8px;padding:1px 4px;margin-top:-8px;margin-left:-5px">' + (i+1) + '</div>', iconSize:[20,14]});
+    _dpMapLayers.push(L.marker([s.lat, s.lon], {icon:icon, interactive:false}).addTo(leafmap));
+  });
 
-    // VRP trucks legend
-    var legHtml='<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;text-transform:uppercase;color:#6b7280;margin-bottom:5px">VRP Trucks</div>';
-    for (var ti=0;ti<(r.vrpTrucks||[]).length;ti++) {
-      var t=r.vrpTrucks[ti], tc=VRP_COLORS[ti%VRP_COLORS.length];
-      legHtml+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><div style="width:14px;height:2px;background:'+tc+'"></div><span style="font-size:9px;color:#374151">Truck '+(ti+1)+': '+t.stops.length+' stops — '+t.returnTimeStr+(t.late?' ⚠':'')+'</span></div>';
-    }
-    document.getElementById('an-map-vrp-legend').innerHTML=legHtml;
-    document.getElementById('an-map-vrp-legend').style.display='block';
+  // Optimized route (green solid, smaller markers so both are visible)
+  var oWithGps = r.oStops.filter(function(s){ return s.lat&&s.lon; });
+  var oTrip = await osrmRoute(oWithGps);
+  if (oTrip && oTrip.geometry) {
+    var oLine = L.polyline(oTrip.geometry.coordinates.map(function(c){ return [c[1],c[0]]; }),
+      {color:'#22c55e', weight:3, opacity:.7}).addTo(leafmap);
+    _dpMapLayers.push(oLine);
+  }
+  r.oStops.forEach(function(s, i) {
+    if (!s.lat||!s.lon) return;
+    allBounds.push([s.lat, s.lon]);
+    var m = L.circleMarker([s.lat, s.lon], {radius:5, color:'#22c55e', fillColor:'#22c55e', fillOpacity:.75, weight:1.5})
+      .bindPopup('<div style="font-size:12px"><strong>' + (i+1) + '. ' + (s.CompanyName||'') + '</strong><br>' + (s.City||'') + '<br><span style="color:#22c55e">Optimized</span></div>')
+      .addTo(leafmap);
+    _dpMapLayers.push(m);
+    var icon2 = L.divIcon({className:'', html:'<div style="background:#22c55e;color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;border-radius:8px;padding:1px 4px;margin-top:-8px;margin-left:-5px">' + (i+1) + '</div>', iconSize:[20,14]});
+    _dpMapLayers.push(L.marker([s.lat, s.lon], {icon:icon2, interactive:false}).addTo(leafmap));
+  });
 
-    if (allBounds.length>1) _analysisMap.fitBounds(allBounds,{padding:[30,30]});
-    document.getElementById('an-map-loading').style.display='none';
-  }, 80);
+  // City labels
+  var labeledCities = {};
+  r.cStops.forEach(function(s) {
+    var city = (s.City||'').trim();
+    if (!city || labeledCities[city] || !s.lat || !s.lon) return;
+    labeledCities[city] = true;
+    var ci = L.divIcon({className:'', html:'<div style="background:rgba(41,82,204,.82);color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:10px;margin-left:4px">' + city + '</div>', iconSize:[80,16]});
+    _dpMapLayers.push(L.marker([s.lat, s.lon], {icon:ci, interactive:false}).addTo(leafmap));
+  });
+
+  if (allBounds.length > 1) leafmap.fitBounds(allBounds, {padding:[40,40]});
+  // Scroll to map
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.scrollIntoView({behavior:'smooth', block:'start'});
 }
 </script>
 
