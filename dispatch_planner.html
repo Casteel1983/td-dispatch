@@ -12,7 +12,7 @@
 html,body{height:100%;overflow:hidden}
 body{font-family:'Barlow',sans-serif;background:#0d0f18;color:#e2e6f3;display:flex;flex-direction:column}
 
-header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0}
+header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);border-bottom:1px solid #1e3a8a;height:50px;display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0}
 .logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#fff}
 .logo span{color:#ef4444}
 .add-cust-hdr-btn{margin-left:12px;background:#1b1e2d;border:1px solid #262a3e;border-radius:6px;color:#6b7399;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
@@ -259,7 +259,32 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .ldm-act-btn.dir:hover{background:#1a1b2e}
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
 
-/* ── DAILY PLAN TAB ── */
+/* ── DAILY PLAN — LIGHT THEME ── */
+#sec-DailyPlan{background:#f0f4ff}
+#sec-DailyPlan .dp-section-title{color:#2952cc}
+#sec-DailyPlan .dp-mode-btn{background:#fff;border-color:#c7d2fe;color:#4b5563}
+#sec-DailyPlan .dp-mode-btn.active{background:#eff2ff;border-color:#2952cc;color:#2952cc}
+#sec-DailyPlan .dp-upload-zone{background:#fff;border-color:#c7d2fe}
+#sec-DailyPlan .dp-upload-zone:hover,#sec-DailyPlan .dp-upload-zone.drag{border-color:#f59e0b;background:#fffbeb}
+#sec-DailyPlan #dp-upload-status{color:#6b7280}
+#sec-DailyPlan .dp-route-chip{background:#fff;border-color:#c7d2fe;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#sec-DailyPlan .dp-route-chip-stops{color:#4b5563}
+#sec-DailyPlan .dp-route-chip-window{color:#6b7280}
+#sec-DailyPlan .dp-review-item{border-bottom-color:#fde68a;color:#1f2937}
+#sec-DailyPlan .dp-review-item:last-child{border-bottom:none}
+#sec-DailyPlan .dp-review-route-sel{background:#fff;border-color:#c7d2fe;color:#1f2937}
+#sec-DailyPlan .dp-route-result{background:#fff;border-color:#c7d2fe;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+#sec-DailyPlan .dp-route-result-header:hover{background:#f5f7ff}
+#sec-DailyPlan .dp-route-result-body{border-top-color:#e8edf8}
+#sec-DailyPlan .dp-stop-row{border-bottom-color:#eef2ff;color:#1f2937}
+#sec-DailyPlan .dp-stop-city{color:#6b7280}
+#sec-DailyPlan .dp-stat{background:#f5f7ff;border:1px solid #e8edf8}
+#sec-DailyPlan .dp-stat-lbl{color:#6b7280}
+#sec-DailyPlan .dp-compare-col-title{border-bottom-color:#e8edf8}
+#sec-DailyPlan #dp-plan-status{color:#6b7280}
+#sec-DailyPlan #dp-progress-wrap{background:#fff;border-color:#c7d2fe}
+#sec-DailyPlan #dp-progress-label{color:#4b5563}
+#sec-DailyPlan #dp-progress-bar{background:linear-gradient(90deg,#f59e0b,#f97316)}
 .dp-section-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#6b7399;margin-bottom:10px}
 .dp-mode-bar{display:flex;gap:6px;margin-bottom:16px}
 .dp-mode-btn{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:8px 20px;border-radius:6px;cursor:pointer;border:1px solid #262a3e;background:none;color:#6b7399;transition:all .15s}
@@ -273,7 +298,9 @@ header{background:#13161f;border-bottom:1px solid #262a3e;height:50px;display:fl
 .dp-upload-btn.add{border-color:#22c55e;color:#22c55e;background:none}
 .dp-upload-btn.load:hover{background:#f59e0b22}
 .dp-upload-btn.add:hover{background:#22c55e22}
-.dp-review-panel{background:#1a130a;border:1px solid #f59e0b44;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.dp-review-panel{background:#fff8f0;border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;margin-bottom:14px;max-height:240px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#fcd34d transparent}
+.dp-review-panel::-webkit-scrollbar{width:4px}
+.dp-review-panel::-webkit-scrollbar-thumb{background:#fcd34d;border-radius:4px}
 .dp-review-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #2a1f0a;font-size:11px}
 .dp-review-item:last-child{border-bottom:none}
 .dp-review-route-sel{background:#0d0f18;border:1px solid #262a3e;border-radius:4px;color:#e2e6f3;font-family:'Barlow Condensed',sans-serif;font-size:11px;padding:3px 6px;cursor:pointer}
@@ -3761,10 +3788,12 @@ function drawAnalysisRouteGeom(geom, color, label) {
 
 function drawAnalysisStops(stops, color, label) {
   var bounds = [[DEPOT.lat, DEPOT.lon]];
-  // Depot marker
   var dm = L.circleMarker([DEPOT.lat, DEPOT.lon], {radius:8, color:'#fff', fillColor:'#fff', fillOpacity:1, weight:2})
-    .bindPopup('<strong>DEPOT</strong>').addTo(_analysisMap);
+    .bindPopup('<strong>DEPOT — Tifton, GA</strong>').addTo(_analysisMap);
   _analysisLayers.push(dm);
+
+  // Track cities already labeled so we only show each city name once
+  var labeledCities = {};
 
   stops.forEach(function(s, i) {
     if (!s.lat || !s.lon) return;
@@ -3777,6 +3806,14 @@ function drawAnalysisStops(stops, color, label) {
     var icon = L.divIcon({className:'', html:'<div style="background:'+color+';color:#fff;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:9px;border-radius:10px;padding:1px 4px;margin-top:-8px;margin-left:-6px;white-space:nowrap">'+(i+1)+'</div>', iconSize:[20,14]});
     var lbl = L.marker([s.lat, s.lon], {icon:icon, interactive:false}).addTo(_analysisMap);
     _analysisLayers.push(lbl);
+    // City label — show once per city, slightly offset
+    var city = (s.City||'').trim();
+    if (city && !labeledCities[city]) {
+      labeledCities[city] = true;
+      var cityIcon = L.divIcon({className:'', html:'<div style="background:rgba(13,15,24,.75);color:#c4c9e2;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:9px;padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:8px;margin-left:4px;border:1px solid rgba(255,255,255,.1)">'+city+'</div>', iconSize:[80,16]});
+      var cityLbl = L.marker([s.lat, s.lon], {icon:cityIcon, interactive:false}).addTo(_analysisMap);
+      _analysisLayers.push(cityLbl);
+    }
   });
   if (bounds.length > 1) _analysisMap.fitBounds(bounds, {padding:[30,30]});
 }
