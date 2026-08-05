@@ -4406,105 +4406,113 @@ function setDailyMode(mode) {
 }
 
 // ── CSV PARSER ────────────────────────────────────────────────────────────────
+// Full-document parser — handles quoted fields with embedded newlines, which the
+// Sales Tickets export uses in the "RT\nStatus" and "Online\nStatus" headers.
+function parseCSVDoc(text) {
+  var rows=[], row=[], cur='', inQ=false;
+  for (var i=0; i<text.length; i++) {
+    var c=text[i];
+    if (c==='"') {
+      if (inQ && text[i+1]==='"') { cur+='"'; i++; }  // escaped quote
+      else inQ=!inQ;
+    } else if (c===',' && !inQ) {
+      row.push(cur); cur='';
+    } else if ((c==='\n'||c==='\r') && !inQ) {
+      if (c==='\r' && text[i+1]==='\n') i++;           // CRLF
+      if (cur||row.length) { row.push(cur); rows.push(row); }
+      row=[]; cur='';
+    } else {
+      cur+=c;
+    }
+  }
+  if (cur||row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
 function parseDailyCSV(text) {
-  // Normalize line endings
-  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows = parseCSVDoc(text);
+  if (!rows.length) return {stops:{},review:[]};
 
-  // Parse as RFC-4180 CSV
-  function parseRow(line) {
-    var result=[], cur='', inQ=false;
-    for (var i=0;i<line.length;i++) {
-      var c=line[i];
-      if (c==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
-      else if (c===','&&!inQ){ result.push(cur);cur=''; }
-      else cur+=c;
-    }
-    result.push(cur);
-    return result;
-  }
-
-  // Find header row (contains 'Cust' and 'Route')
+  // Find header row — must contain 'Cust' and a column that is exactly 'Route'
   var headerRow=null, headerIdx=-1;
-  for (var i=0;i<Math.min(lines.length,6);i++) {
-    var cols=parseRow(lines[i]);
-    if (cols.some(function(c){return c.indexOf('Cust')!==-1;}) && cols.some(function(c){return c.trim()==='Route';})) {
-      headerRow=cols.map(function(c){return c.trim().replace(/\n/g,' ');});
-      headerIdx=i;
-      break;
-    }
+  for (var i=0; i<Math.min(rows.length,8); i++) {
+    var r = rows[i].map(function(c){return c.trim().replace(/\n/g,' ');});
+    var hasCust  = r.some(function(h){return h.toLowerCase().indexOf('cust')!==-1;});
+    var hasRoute = r.some(function(h){return h==='Route';});
+    if (hasCust && hasRoute) { headerRow=r; headerIdx=i; break; }
   }
-  if (!headerRow) return {stops:{},review:[]};
+  if (!headerRow) {
+    document.getElementById('dp-upload-status').textContent =
+      '⚠ Could not find header row. Make sure this is the Sales Tickets Lookup CSV.';
+    return {stops:{},review:[]};
+  }
 
-  // Column indices
-  function colIdx(name) { return headerRow.findIndex(function(h){return h.toLowerCase().indexOf(name.toLowerCase())!==-1;}); }
-  var iCust = colIdx('Cust #'); if(iCust<0) iCust=colIdx('Cust');
-  var iRoute = headerRow.lastIndexOf(headerRow.filter(function(h){return h==='Route';})[0]);
-  var iName  = colIdx('Name'); // long name
-  var iSName = colIdx('Short Name');
-  var iCity  = colIdx('City');
-  var iNote  = colIdx('Note');
-  var iNAT   = colIdx('NAT');
-  var iRT    = headerRow.findIndex(function(h){return h.indexOf('RT')!==-1&&h.indexOf('Status')!==-1;});
-  var iTotal = colIdx('Total');
-  var iDate  = colIdx('Date');
+  // Column indices by header name
+  function col(name) {
+    return headerRow.findIndex(function(h){return h.toLowerCase().indexOf(name.toLowerCase())!==-1;});
+  }
+  var iCust  = col('cust #'); if(iCust<0) iCust=col('cust');
+  var iRoute = headerRow.map(function(h,i){return h==='Route'?i:-1;}).filter(function(i){return i>=0;}).pop();
+  var iName  = col('name');
+  var iCity  = col('city');
+  var iNote  = col('note');
+  var iNAT   = col('nat');
+  var iRT    = headerRow.findIndex(function(h){return h.toLowerCase().indexOf('rt')!==-1 && h.toLowerCase().indexOf('status')!==-1;});
+  var iTotal = col('total');
+
+  if (iCust<0 || iRoute===undefined) {
+    document.getElementById('dp-upload-status').textContent =
+      '⚠ Could not locate Cust # or Route columns. Check the CSV format.';
+    return {stops:{},review:[]};
+  }
 
   var stops={}, review=[];
-  var allC = null; // lazy-load customer DB for GPS
+  var allC = Object.values(ROUTES_DATA).flat();
 
-  for (var ri=headerIdx+1;ri<lines.length;ri++) {
-    var line=lines[ri].trim();
-    if (!line) continue;
-    var row=parseRow(line);
-    if (row.length < 10) continue;
+  for (var ri=headerIdx+1; ri<rows.length; ri++) {
+    var row = rows[ri];
+    if (!row || row.length < 10) continue;
 
     var custNum  = (row[iCust]||'').trim();
-    var routeVal = (row[iRoute]||'').trim();
-    var name     = (row[iName]||'').trim();
-    var city     = (row[iCity]||'').trim();
-    var note     = (row[iNote]||'').trim();
-    var nat      = (row[iNAT]||'').trim();
-    var rt       = (iRT>=0?(row[iRT]||''):'').trim();
-    var totalStr = (row[iTotal]||'').trim();
-    var total    = parseFloat(totalStr) || 0;
+    var routeVal = (iRoute<row.length?(row[iRoute]||''):'').trim();
+    var name     = (iName>=0&&iName<row.length?(row[iName]||''):'').trim();
+    var city     = (iCity>=0&&iCity<row.length?(row[iCity]||''):'').trim();
+    var note     = (iNote>=0&&iNote<row.length?(row[iNote]||''):'').trim();
+    var nat      = (iNAT>=0&&iNAT<row.length?(row[iNAT]||''):'').trim();
+    var rt       = (iRT>=0&&iRT<row.length?(row[iRT]||''):'').trim();
+    var total    = parseFloat((iTotal>=0&&iTotal<row.length?(row[iTotal]||''):'').replace(',',''))||0;
 
     if (!custNum) continue;
 
-    // Filter: ignore $0 + no NAT + no RT (unless HOLD → review)
+    // Ignore: $0.00 + no NAT + no RT Status (unfulfilled/placeholder) — UNLESS HOLD
     var isZeroNoStatus = (total===0 && nat==='' && rt==='');
-    if (isZeroNoStatus && note.toUpperCase().indexOf('HOLD')===-1) continue;
+    var isHold = note.toUpperCase().indexOf('HOLD')!==-1;
+    if (isZeroNoStatus && !isHold) continue;
 
-    // Filter: ignore Route 0 and Route 2 (local)
+    // Ignore Route 0 (pickups) and Route 2 (local)
     if (routeVal==='0' || routeVal==='2') continue;
 
-    // Manual review: Route H or HOLD note
-    var isHold = note.toUpperCase().indexOf('HOLD')!==-1;
-    var isRouteH = routeVal==='H' || !(routeVal in VALID_ROUTES);
+    // Manual review: HOLD note or unknown/missing route
+    var isRouteH = !(routeVal in VALID_ROUTES);
     if (isHold || isRouteH) {
-      // Don't add duplicate reviews for same cust+issue
-      var alreadyIn = review.some(function(r){return r.custNum===custNum;});
-      if (!alreadyIn) {
+      if (!review.some(function(rv){return rv.custNum===custNum;})) {
         review.push({custNum:custNum, name:name, city:city, note:note,
-          suggestedRoute: isRouteH?'':routeVal, reason: isHold?'HOLD':'Unknown Route ('+routeVal+')'});
+          suggestedRoute: isRouteH?'':routeVal,
+          reason: isHold?'HOLD':'Unknown Route ('+(routeVal||'blank')+')'});
       }
       continue;
     }
 
-    // Enrich with GPS from CUSTOMERS database
-    if (!allC) allC = Object.values(ROUTES_DATA).flat();
+    // Enrich with GPS
     var cust = allC.find(function(c){return String(c.CustomerNumber)===String(custNum);});
-
     var routeName = VALID_ROUTES[routeVal];
     if (!stops[routeName]) stops[routeName]=[];
 
-    // Deduplicate: one stop per customer per route
-    var existing = stops[routeName].find(function(s){return s.CustomerNumber===custNum;});
-    if (!existing) {
+    // Deduplicate per customer per route
+    if (!stops[routeName].some(function(s){return s.CustomerNumber===custNum;})) {
       stops[routeName].push({
-        CustomerNumber: custNum,
-        CompanyName: name,
-        City: city,
-        lat: cust?cust.lat:null,
-        lon: cust?cust.lon:null
+        CustomerNumber:custNum, CompanyName:name, City:city,
+        lat:cust?cust.lat:null, lon:cust?cust.lon:null
       });
     }
   }
