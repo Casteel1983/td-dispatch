@@ -4695,198 +4695,318 @@ async function runDailyPlan() {
   if (_dailyRunning) return;
   _dailyRunning = true;
   var windows = DAILY_WINDOWS[_dailyMode];
-  var routes = Object.keys(_dailyOrders).filter(function(r){return _dailyOrders[r].length && windows[r];});
-  if (!routes.length) { alert('No stops loaded for '+_dailyMode+' routes.'); _dailyRunning=false; return; }
+  var routes = Object.keys(_dailyOrders).filter(function(r){ return _dailyOrders[r].length && windows[r]; });
+  if (!routes.length) { alert('No stops loaded for ' + _dailyMode + ' routes.'); _dailyRunning = false; return; }
 
-  document.getElementById('dp-plan-btn').disabled=true;
-  document.getElementById('dp-progress-wrap').style.display='block';
-  document.getElementById('dp-results').innerHTML='';
+  document.getElementById('dp-plan-btn').disabled = true;
+  document.getElementById('dp-progress-wrap').style.display = 'block';
+  document.getElementById('dp-results').innerHTML = '';
 
-  var results=[], total=routes.length*3, done=0;
+  function setDpProg(pct, label) {
+    document.getElementById('dp-progress-bar').style.width = Math.min(pct,100) + '%';
+    document.getElementById('dp-progress-label').textContent = label;
+  }
 
-  for (var ri=0;ri<routes.length;ri++) {
+  var perRouteResults = [];
+  var total = routes.length * 2; // constrained + optimized per route
+  var done = 0;
+
+  // ── Per-route: Our Parameters (constrainedRoute) and Fully Optimized (NN) ──
+  for (var ri = 0; ri < routes.length; ri++) {
     var route = routes[ri];
     var win   = windows[route];
     var stops = _dailyOrders[route];
-    var color = win.color;
 
-    function setDpProg(pct,label){
-      document.getElementById('dp-progress-bar').style.width=Math.min(pct,100)+'%';
-      document.getElementById('dp-progress-label').textContent=label;
-    }
-
-    // ── Our Parameters (as assigned) ──
-    setDpProg(done/total*95, route+' — Our Parameters...');
-    var cStops = stops.slice(); // GPS already enriched from parse
-    var cTrip  = await osrmRoute(cStops);
+    // Our Parameters — uses the same constrainedRoute() logic as the main planner
+    setDpProg(done/total*70, route + ' — Our Parameters...');
+    var cStops = constrainedRoute(stops, route);
+    var cTrip  = await osrmRoute(cStops.filter(function(s){ return s.lat&&s.lon; }));
     done++;
 
-    // ── Fully Optimized (NN) ──
-    setDpProg(done/total*95, route+' — Optimized...');
+    // Fully Optimized — pure NN, no constraints
+    setDpProg(done/total*70, route + ' — Optimized...');
     var oStops = nnOptimize(stops);
-    var oTrip  = await osrmRoute(oStops);
+    var oTrip  = await osrmRoute(oStops.filter(function(s){ return s.lat&&s.lon; }));
     done++;
 
-    // ── Fewest Trucks VRP (within time window) ──
-    setDpProg(done/total*95, route+' — VRP...');
-    var vrpBudget = win.returnBy - win.depart; // minutes available
-    var vrpTrucks = await solveVRPWithWindow(stops, win.depart, win.returnBy, win.maxStops||999);
-    done++;
-
-    // Stats
     var cMi    = cTrip ? cTrip.distanceMi  : null;
     var cMin   = cTrip ? cTrip.durationMin  : null;
     var oMi    = oTrip ? oTrip.distanceMi  : null;
     var oMin   = oTrip ? oTrip.durationMin  : null;
-    var cTotal = cMin!=null ? cMin + stops.length*STOP_MIN : null;
-    var oTotal = oMin!=null ? oMin + stops.length*STOP_MIN : null;
-    var cReturn = cTotal!=null ? win.depart+cTotal : null;
-    var oReturn = oTotal!=null ? win.depart+oTotal : null;
+    var cTotal = cMin != null ? cMin + stops.length * STOP_MIN : null;
+    var oTotal = oMin != null ? oMin + stops.length * STOP_MIN : null;
+    var cReturn = cTotal != null ? win.depart + cTotal : null;
+    var oReturn = oTotal != null ? win.depart + oTotal : null;
 
-    results.push({
-      route:route, color:color, win:win,
-      cStops:cStops, oStops:oStops,
-      cMi:cMi, cMin:cMin, cTotal:cTotal, cReturn:cReturn,
-      oMi:oMi, oMin:oMin, oTotal:oTotal, oReturn:oReturn,
-      vrpTrucks:vrpTrucks,
-      late: cReturn!=null && cReturn>win.returnBy,
-      oLate: oReturn!=null && oReturn>win.returnBy
+    perRouteResults.push({
+      route: route, color: win.color, win: win,
+      cStops: cStops, oStops: oStops,
+      cMi: cMi, cMin: cMin, cTotal: cTotal, cReturn: cReturn,
+      oMi: oMi, oMin: oMin, oTotal: oTotal, oReturn: oReturn,
+      late:  cReturn != null && cReturn > win.returnBy,
+      oLate: oReturn != null && oReturn > win.returnBy
     });
-
-    await new Promise(function(r){setTimeout(r,20);});
+    await new Promise(function(r){ setTimeout(r,20); });
   }
 
-  setDpProg(100,'Done!');
+  // ── Cross-route VRP: can we serve all stops with fewer trucks? ──
+  setDpProg(72, 'Cross-route VRP: finding optimal truck combinations...');
+  var vrpResult = await solveCrossRouteVRP(_dailyOrders, windows);
+
+  setDpProg(100, 'Done!');
   setTimeout(function(){
-    document.getElementById('dp-progress-wrap').style.display='none';
-    document.getElementById('dp-plan-btn').disabled=false;
+    document.getElementById('dp-progress-wrap').style.display = 'none';
+    document.getElementById('dp-plan-btn').disabled = false;
   }, 700);
 
-  renderDailyResults(results);
-  _dailyRunning=false;
+  renderDailyResults(perRouteResults, vrpResult);
+  _dailyRunning = false;
 }
 
-// VRP with explicit time window (daily plan version)
-async function solveVRPWithWindow(stops, departMin, returnByMin, maxStops) {
+// ── CROSS-ROUTE VRP ───────────────────────────────────────────────────────────
+// Pools all stops from all routes and builds truck assignments that can combine
+// routes — e.g. Route 1 + Route 5 AM on one truck returning by noon.
+// Respects heterogeneous time windows per truck type.
+async function solveCrossRouteVRP(dailyOrders, windows) {
+  var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6','#06b6d4'];
+
+  // Bucket stops by their return-window category
+  var NOON    = 720;   // 12:00 PM
+  var THREE   = 900;   // 3:00 PM
+  var FIVEPM  = 1020;  // 5:00 PM
+
+  var noonPool   = [];  // Routes 1,3,4,5 — must return by noon
+  var threePool  = [];  // Route 8 — must return by 3 PM
+  var alldayPool = [];  // Routes 6,7 — all day, keep separate (too far to combine)
+
+  for (var route in dailyOrders) {
+    var win = windows[route];
+    if (!win || !dailyOrders[route].length) continue;
+    var stops = dailyOrders[route].map(function(s){
+      return Object.assign({}, s, {homeRoute: route, win: win});
+    });
+    if (win.returnBy <= NOON) {
+      stops.forEach(function(s){ noonPool.push(s); });
+    } else if (win.returnBy <= THREE) {
+      stops.forEach(function(s){ threePool.push(s); });
+    } else {
+      // All-day routes — keep each as its own truck (Route 6/7 are long haul)
+      alldayPool.push({route: route, stops: stops, win: win});
+    }
+  }
+
+  var trucks = [];
+
+  // All-day routes: one dedicated truck each (can't realistically combine Florida + SW Georgia)
+  for (var ai = 0; ai < alldayPool.length; ai++) {
+    var ad = alldayPool[ai];
+    var adOrdered = constrainedRoute(ad.stops, ad.route);
+    var adTrip = await osrmRoute(adOrdered.filter(function(s){return s.lat&&s.lon;}));
+    var adMi = adTrip ? adTrip.distanceMi : null;
+    var adDrvMin = adTrip ? adTrip.durationMin : null;
+    var adStopMin = ad.stops.length * STOP_MIN;
+    var adTotal = adDrvMin != null ? adDrvMin + adStopMin : null;
+    var adReturn = adTotal != null ? ad.win.depart + adTotal : null;
+    trucks.push({
+      id: trucks.length + 1, label: ad.route + ' (all-day)',
+      stops: adOrdered, homeRoutes: [ad.route],
+      distMi: adMi, driveMin: adDrvMin, stopMin: adStopMin, totalMin: adTotal,
+      depart: ad.win.depart, returnBy: ad.win.returnBy,
+      returnMin: adReturn, returnTimeStr: adReturn ? minsToTime(adReturn) : '—',
+      late: adReturn ? adReturn > ad.win.returnBy : false,
+      color: VRP_COLORS[trucks.length % VRP_COLORS.length]
+    });
+    setDpProg(75 + (ai / Math.max(alldayPool.length,1)) * 5, 'Processing ' + ad.route + '...');
+    await new Promise(function(r){ setTimeout(r,20); });
+  }
+
+  // Route 8 pool: pack into 3 PM-return trucks
+  if (threePool.length) {
+    var t8Trucks = await packIntoTrucks(threePool, 495, THREE, 999, 'Route 8', VRP_COLORS, trucks.length);
+    for (var ti=0; ti<t8Trucks.length; ti++) trucks.push(t8Trucks[ti]);
+    setDpProg(82, 'Route 8 packed...');
+  }
+
+  // Noon pool (Routes 1,3,4,5): pack into noon-return trucks, combining freely
+  // Route 1 has a max-stop constraint — enforce it by flagging if a truck has
+  // Route 1 stops and exceeds 7 stops total.
+  if (noonPool.length) {
+    // Depart at earliest scheduled time for this pool (7:15 AM = 435)
+    var noonDepart = 435;
+    var noonTrucks = await packIntoTrucks(noonPool, noonDepart, NOON, 999, 'Noon Routes', VRP_COLORS, trucks.length);
+    for (var ni=0; ni<noonTrucks.length; ni++) trucks.push(noonTrucks[ni]);
+    setDpProg(95, 'Noon pool packed...');
+  }
+
+  // Count how many routes are in each truck for the label
+  trucks.forEach(function(t) {
+    if (!t.homeRoutes && t.stops) {
+      var routes = {};
+      t.stops.forEach(function(s){ if(s.homeRoute) routes[s.homeRoute]=1; });
+      t.homeRoutes = Object.keys(routes).sort();
+      if (!t.label) t.label = t.homeRoutes.join(' + ');
+    }
+  });
+
+  // Summary stats
+  var currentTrucks = Object.keys(dailyOrders).filter(function(r){ return dailyOrders[r].length && windows[r]; }).length;
+  var totalVRPMi = trucks.reduce(function(s,t){ return s + (t.distMi||0); }, 0);
+  var trucksSaved = currentTrucks - trucks.length;
+
+  return { trucks: trucks, currentTrucks: currentTrucks, trucksSaved: trucksSaved, totalMi: totalVRPMi };
+}
+
+// Pack a pool of stops into trucks, each limited by time window
+async function packIntoTrucks(pool, departMin, returnByMin, maxStops, groupLabel, VRP_COLORS, colorOffset) {
   var budget = returnByMin - departMin;
-  var withGps  = stops.filter(function(s){return s.lat&&s.lon;});
-  var noGps    = stops.filter(function(s){return !s.lat||!s.lon;});
-  var remaining = withGps.slice().sort(function(a,b){return hav(DEPOT,a)-hav(DEPOT,b);});
+  var remaining = pool.filter(function(s){ return s.lat&&s.lon; })
+    .sort(function(a,b){ return hav(DEPOT,a) - hav(DEPOT,b); });
+  var noGps = pool.filter(function(s){ return !s.lat||!s.lon; });
   var trucks = [];
 
   while (remaining.length) {
     var truck=[], cur={lat:DEPOT.lat,lon:DEPOT.lon}, usedMin=0;
     while (remaining.length && truck.length < maxStops) {
       var bi=0, bd=Infinity;
-      remaining.forEach(function(s,i){var d=hav(cur,s);if(d<bd){bd=d;bi=i;}});
+      remaining.forEach(function(s,i){ var d=hav(cur,s); if(d<bd){bd=d;bi=i;} });
       var cand = remaining[bi];
       var legMin = hav(cur,cand)/45*60;
       var retMin = hav(cand,DEPOT)/45*60;
       if (usedMin + legMin + STOP_MIN + retMin > budget) break;
-      truck.push(cand); usedMin+=legMin+STOP_MIN; cur={lat:cand.lat,lon:cand.lon};
+      truck.push(cand); usedMin += legMin + STOP_MIN;
+      cur = {lat:cand.lat, lon:cand.lon};
       remaining.splice(bi,1);
     }
-    if (!truck.length){remaining.shift();continue;}
+    if (!truck.length) { remaining.shift(); continue; }
+
     var trip = await osrmTrip(truck);
-    var distMi  = trip?trip.distanceMi:hav(DEPOT,cur)*2;
-    var driveMin = trip?trip.durationMin:distMi/45*60;
-    var stopMin = truck.length*STOP_MIN;
-    var totalMin= driveMin+stopMin;
-    var retMin2 = departMin+totalMin;
-    trucks.push({stops:truck,distMi:distMi,driveMin:driveMin,stopMin:stopMin,
-      totalMin:totalMin,returnMin:retMin2,returnTimeStr:minsToTime(retMin2),
-      late:retMin2>returnByMin});
-    await new Promise(function(r){setTimeout(r,20);});
+    var distMi   = trip ? trip.distanceMi  : hav(DEPOT,cur)*2;
+    var driveMin = trip ? trip.durationMin  : distMi/45*60;
+    var stopMin  = truck.length * STOP_MIN;
+    var totalMin = driveMin + stopMin;
+    var retMin2  = departMin + totalMin;
+
+    var homeRoutes = {};
+    truck.forEach(function(s){ if(s.homeRoute) homeRoutes[s.homeRoute]=1; });
+    var routeList = Object.keys(homeRoutes).sort();
+
+    var col = VRP_COLORS[(colorOffset + trucks.length) % VRP_COLORS.length];
+    trucks.push({
+      id: colorOffset + trucks.length + 1,
+      label: routeList.join(' + '),
+      stops: truck, homeRoutes: routeList,
+      distMi: distMi, driveMin: driveMin, stopMin: stopMin, totalMin: totalMin,
+      depart: departMin, returnBy: returnByMin,
+      returnMin: retMin2, returnTimeStr: minsToTime(retMin2),
+      late: retMin2 > returnByMin, color: col
+    });
+    await new Promise(function(r){ setTimeout(r,20); });
   }
-  if (noGps.length && trucks.length) trucks[trucks.length-1].stops=trucks[trucks.length-1].stops.concat(noGps);
-  if (!trucks.length && stops.length) {
-    // Fallback: all stops in one truck
-    var trip=await osrmTrip(withGps);
-    var distMi=trip?trip.distanceMi:0;
-    var driveMin=trip?trip.durationMin:0;
-    var totalMin=driveMin+stops.length*STOP_MIN;
-    trucks.push({stops:withGps.concat(noGps),distMi:distMi,driveMin:driveMin,stopMin:stops.length*STOP_MIN,
-      totalMin:totalMin,returnMin:departMin+totalMin,returnTimeStr:minsToTime(departMin+totalMin),late:(departMin+totalMin)>returnByMin});
+  // Tack GPS-less stops onto last truck
+  if (noGps.length && trucks.length) {
+    trucks[trucks.length-1].stops = trucks[trucks.length-1].stops.concat(noGps);
   }
   return trucks;
 }
 
-function renderDailyResults(results) {
+function renderDailyResults(results, vrpResult) {
   var div = document.getElementById('dp-results');
-  var VRP_COLORS=['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899'];
+  var VRP_COLORS = ['#818cf8','#22c55e','#f59e0b','#ef4444','#14b8a6','#a855f7','#f97316','#ec4899','#3b82f6','#06b6d4'];
 
-  // Summary row
-  var totalMiC  = results.reduce(function(s,r){return s+(r.cMi||0);},0);
-  var totalMiO  = results.reduce(function(s,r){return s+(r.oMi||0);},0);
+  var totalMiC  = results.reduce(function(s,r){ return s+(r.cMi||0); }, 0);
+  var totalMiO  = results.reduce(function(s,r){ return s+(r.oMi||0); }, 0);
   var totalMiSaved = totalMiC - totalMiO;
-  var totalStops = results.reduce(function(s,r){return s+r.cStops.length;},0);
-  var lateRoutes = results.filter(function(r){return r.late;}).map(function(r){return r.route;});
+  var totalStops = results.reduce(function(s,r){ return s+r.cStops.length; }, 0);
+  var lateRoutes = results.filter(function(r){ return r.late; }).map(function(r){ return r.route; });
+  var trucksSaved = vrpResult ? vrpResult.trucksSaved : 0;
 
-  var html = '<div class="dp-stat-row">'+
-    '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8">'+totalMiC.toFixed(1)+'</div><div class="dp-stat-lbl">Our Params Miles</div></div>'+
-    '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e">'+totalMiO.toFixed(1)+'</div><div class="dp-stat-lbl">Optimized Miles</div></div>'+
-    '<div class="dp-stat"><div class="dp-stat-val" style="color:'+(totalMiSaved>0?'#22c55e':'#6b7399')+'">'+( totalMiSaved>0?'−':'')+Math.abs(totalMiSaved).toFixed(1)+'</div><div class="dp-stat-lbl">Miles '+(totalMiSaved>0?'Saved':'Added')+'</div></div>'+
-    '<div class="dp-stat"><div class="dp-stat-val">'+totalStops+'</div><div class="dp-stat-lbl">Total Stops</div></div>'+
-    '<div class="dp-stat"><div class="dp-stat-val" style="color:'+(lateRoutes.length?'#ef4444':'#22c55e')+'">'+( lateRoutes.length?lateRoutes.length:'✓')+'</div><div class="dp-stat-lbl">Routes Over Window</div></div>'+
+  // ── Summary bar ──
+  var html = '<div class="dp-stat-row">' +
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:#2952cc">' + results.length + '</div><div class="dp-stat-lbl">Current Trucks</div></div>' +
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8">' + totalMiC.toFixed(1) + '</div><div class="dp-stat-lbl">Our Params Miles</div></div>' +
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e">' + totalMiO.toFixed(1) + '</div><div class="dp-stat-lbl">Optimized Miles</div></div>' +
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:' + (totalMiSaved>0?'#22c55e':'#6b7280') + '">' + (totalMiSaved>0?'−':'') + Math.abs(totalMiSaved).toFixed(1) + '</div><div class="dp-stat-lbl">Miles ' + (totalMiSaved>0?'Saved':'Added') + '</div></div>' +
+    (vrpResult ? '<div class="dp-stat"><div class="dp-stat-val" style="color:#f59e0b">' + vrpResult.trucks.length + '</div><div class="dp-stat-lbl">VRP Trucks Needed</div></div>' : '') +
+    (vrpResult && trucksSaved > 0 ? '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e">▼ ' + trucksSaved + '</div><div class="dp-stat-lbl">Trucks Saved</div></div>' : '') +
+    '<div class="dp-stat"><div class="dp-stat-val" style="color:' + (lateRoutes.length?'#ef4444':'#22c55e') + '">' + (lateRoutes.length?lateRoutes.length:'✓') + '</div><div class="dp-stat-lbl">Routes Over Window</div></div>' +
     '</div>';
 
-  // Per-route result cards
-  results.forEach(function(r, idx) {
-    var lateFlag = r.late ? '<span class="dp-warn-badge dp-over-badge">&#x26A0; Over Time Window</span>' : '';
-    var savedMi  = (r.cMi&&r.oMi) ? (r.cMi-r.oMi) : null;
-    var vrpCount = r.vrpTrucks ? r.vrpTrucks.length : 1;
-    var vrpLate  = r.vrpTrucks ? r.vrpTrucks.some(function(t){return t.late;}) : false;
+  // ── VRP cross-route truck summary ──
+  if (vrpResult && vrpResult.trucks.length) {
+    html += '<div style="background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;margin-bottom:14px">' +
+      '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#f59e0b;margin-bottom:10px">' +
+      '&#x1F69A; Fewest Trucks — ' + vrpResult.trucks.length + ' truck' + (vrpResult.trucks.length!==1?'s':'') + ' vs ' + vrpResult.currentTrucks + ' current' +
+      (trucksSaved > 0 ? ' <span style="color:#22c55e">(save ' + trucksSaved + ' truck' + (trucksSaved!==1?'s':'') + ')</span>' : trucksSaved < 0 ? ' <span style="color:#ef4444">(needs ' + Math.abs(trucksSaved) + ' more)</span>' : ' <span style="color:#6b7280">(same count)</span>') +
+      '</div>';
 
-    html += '<div class="dp-route-result">'+
-      '<div class="dp-route-result-header" onclick="toggleDpResult('+idx+')">'+
-        '<span style="width:12px;height:12px;border-radius:50%;background:'+r.color+';display:inline-block;flex-shrink:0"></span>'+
-        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:14px;color:#111827;flex:1">'+r.route+'</span>'+
-        '<span style="font-size:11px;color:#6b7280;margin-right:8px">'+r.cStops.length+' stops &middot; '+r.win.label+'</span>'+
-        (savedMi!==null?'<span style="font-size:11px;color:'+(savedMi>0?'#22c55e':'#6b7399')+';margin-right:8px">'+(savedMi>0?'−':'+')+ Math.abs(savedMi).toFixed(1)+' mi</span>':'')+
-        lateFlag+
-        '<button style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#818cf8;font-size:10px;padding:3px 8px;cursor:pointer;margin-left:6px" onclick="event.stopPropagation();openDpMap('+idx+')" title="View map">&#x1F5FA;</button>'+
-        '<span style="color:#9ca3af;margin-left:8px;font-size:12px" id="dp-chevron-'+idx+'">&#x25BE;</span>'+
-      '</div>'+
-      '<div class="dp-route-result-body" id="dp-body-'+idx+'">'+
-        // Stats row
-        '<div class="dp-stat-row" style="margin-bottom:14px">'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cMi?r.cMi.toFixed(1):'—')+'</div><div class="dp-stat-lbl">Our Params Mi</div></div>'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cTotal?Math.round(r.cTotal)+'min':'—')+'</div><div class="dp-stat-lbl">Our Params Time</div></div>'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">'+(r.cReturn?minsToTime(r.cReturn):'—')+'</div><div class="dp-stat-lbl">Est. Return</div></div>'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">'+(r.oMi?r.oMi.toFixed(1):'—')+'</div><div class="dp-stat-lbl">Opt Mi</div></div>'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">'+(r.oReturn?minsToTime(r.oReturn):'—')+'</div><div class="dp-stat-lbl">Opt Return</div></div>'+
-          '<div class="dp-stat"><div class="dp-stat-val" style="color:#f59e0b;font-size:14px">'+vrpCount+(vrpLate?' ⚠':'')+' truck'+(vrpCount!==1?'s':'')+'</div><div class="dp-stat-lbl">VRP Trucks</div></div>'+
-        '</div>'+
-        // Stop lists
-        '<div class="dp-compare-row">'+
-          // Our Parameters stops
-          '<div class="dp-compare-col">'+
-            '<div class="dp-compare-col-title" style="color:#818cf8">Our Parameters</div>'+
-            r.cStops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#818cf8">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,24)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
-          '</div>'+
-          // Optimized stops
-          '<div class="dp-compare-col">'+
-            '<div class="dp-compare-col-title" style="color:#22c55e">Fully Optimized</div>'+
-            r.oStops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#22c55e">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,24)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
-          '</div>'+
-          // VRP trucks
-          '<div class="dp-compare-col">'+
-            '<div class="dp-compare-col-title" style="color:#f59e0b">Fewest Trucks (VRP)</div>'+
-            (r.vrpTrucks||[]).map(function(t,ti){
-              var tc=VRP_COLORS[ti%VRP_COLORS.length];
-              return '<div style="margin-bottom:8px"><div style="font-size:10px;color:'+tc+';font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-bottom:2px">Truck '+(ti+1)+' — '+t.stops.length+' stops — '+t.distMi.toFixed(1)+'mi — back '+t.returnTimeStr+(t.late?' ⚠':'')+'</div>'+
-                t.stops.map(function(s,si){return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:'+tc+'">'+(si+1)+'.</span><span class="dp-stop-name">'+( s.CompanyName||'').slice(0,22)+'</span><span class="dp-stop-city">'+( s.City||'')+'</span></div>';}).join('')+
-                '</div>';
-            }).join('')+
-          '</div>'+
-        '</div>'+
-      '</div>'+
+    vrpResult.trucks.forEach(function(t, ti) {
+      var lateFlag = t.late ? ' <span class="dp-warn-badge dp-over-badge">⚠ Over Window</span>' : '';
+      var combinedFlag = t.homeRoutes && t.homeRoutes.length > 1 ?
+        ' <span class="dp-warn-badge" style="background:#f0fdf4;border-color:#86efac;color:#15803d">🔗 Combined</span>' : '';
+      html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">' +
+        '<div style="width:10px;height:10px;border-radius:50%;background:' + t.color + ';flex-shrink:0"></div>' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:13px;color:#111827">Truck ' + t.id + ' — ' + t.label + '</span>' +
+        combinedFlag + lateFlag +
+        '<span style="margin-left:auto;font-size:11px;color:#6b7280">' + t.stops.length + ' stops &middot; ' + (t.distMi?t.distMi.toFixed(1):'?') + ' mi &middot; Depart ' + minsToTime(t.depart) + ' → Back ' + t.returnTimeStr + '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">' +
+        t.stops.map(function(s, si) {
+          var routeCol = s.homeRoute && DAILY_WINDOWS[_dailyMode][s.homeRoute] ? DAILY_WINDOWS[_dailyMode][s.homeRoute].color : '#6b7280';
+          return '<span style="font-size:10px;background:#f8faff;border:1px solid #e5e7eb;border-radius:4px;padding:2px 6px;color:#374151">' +
+            '<span style="color:' + t.color + ';font-weight:700">' + (si+1) + '.</span> ' +
+            (s.CompanyName||'').slice(0,20) +
+            '<span style="color:#9ca3af;font-size:9px;margin-left:4px">' + (s.City||'') + '</span>' +
+            (s.homeRoute ? '<span style="color:' + routeCol + ';font-size:9px;margin-left:3px">[' + s.homeRoute.replace('Route ','R') + ']</span>' : '') +
+            '</span>';
+        }).join('') +
+        '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Per-route cards (Our Parameters vs Optimized) ──
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#2952cc;margin-bottom:10px">Route-by-Route Comparison</div>';
+
+  results.forEach(function(r, idx) {
+    var lateFlag = r.late  ? '<span class="dp-warn-badge dp-over-badge">⚠ Over Time Window</span>' : '';
+    var savedMi  = (r.cMi&&r.oMi) ? (r.cMi-r.oMi) : null;
+
+    html += '<div class="dp-route-result">' +
+      '<div class="dp-route-result-header" onclick="toggleDpResult(' + idx + ')">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + r.color + ';display:inline-block;flex-shrink:0"></span>' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:14px;color:#111827;flex:1">' + r.route + '</span>' +
+        '<span style="font-size:11px;color:#6b7280;margin-right:8px">' + r.cStops.length + ' stops &middot; ' + r.win.label + '</span>' +
+        (savedMi!==null ? '<span style="font-size:11px;color:' + (savedMi>0?'#22c55e':'#6b7280') + ';margin-right:8px">' + (savedMi>0?'−':'+') + Math.abs(savedMi).toFixed(1) + ' mi</span>' : '') +
+        lateFlag +
+        '<button style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#818cf8;font-size:10px;padding:3px 8px;cursor:pointer;margin-left:6px" onclick="event.stopPropagation();openDpMap(' + idx + ')" title="View map">&#x1F5FA;</button>' +
+        '<span style="color:#9ca3af;margin-left:8px;font-size:12px" id="dp-chevron-' + idx + '">&#x25BE;</span>' +
+      '</div>' +
+      '<div class="dp-route-result-body" id="dp-body-' + idx + '">' +
+        '<div class="dp-stat-row" style="margin-bottom:14px">' +
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">' + (r.cMi?r.cMi.toFixed(1):'—') + '</div><div class="dp-stat-lbl">Our Params Mi</div></div>' +
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">' + (r.cTotal?Math.round(r.cTotal)+'min':'—') + '</div><div class="dp-stat-lbl">Our Params Time</div></div>' +
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#818cf8;font-size:14px">' + (r.cReturn?minsToTime(r.cReturn):'—') + '</div><div class="dp-stat-lbl">Est. Return</div></div>' +
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">' + (r.oMi?r.oMi.toFixed(1):'—') + '</div><div class="dp-stat-lbl">Opt Mi</div></div>' +
+          '<div class="dp-stat"><div class="dp-stat-val" style="color:#22c55e;font-size:14px">' + (r.oReturn?minsToTime(r.oReturn):'—') + '</div><div class="dp-stat-lbl">Opt Return</div></div>' +
+        '</div>' +
+        '<div class="dp-compare-row">' +
+          '<div class="dp-compare-col">' +
+            '<div class="dp-compare-col-title" style="color:#818cf8">Our Parameters</div>' +
+            r.cStops.map(function(s,si){ return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#818cf8">' + (si+1) + '.</span><span class="dp-stop-name">' + (s.CompanyName||'').slice(0,24) + '</span><span class="dp-stop-city">' + (s.City||'') + '</span></div>'; }).join('') +
+          '</div>' +
+          '<div class="dp-compare-col">' +
+            '<div class="dp-compare-col-title" style="color:#22c55e">Fully Optimized</div>' +
+            r.oStops.map(function(s,si){ return '<div class="dp-stop-row"><span class="dp-stop-num" style="color:#22c55e">' + (si+1) + '.</span><span class="dp-stop-name">' + (s.CompanyName||'').slice(0,24) + '</span><span class="dp-stop-city">' + (s.City||'') + '</span></div>'; }).join('') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
     '</div>';
   });
 
   div.innerHTML = html;
-  // Store results for map access
   div._dpResults = results;
+  div._vrpResult = vrpResult;
 }
 
 function toggleDpResult(idx) {
