@@ -82,7 +82,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .clear-route-btn{margin-left:auto;background:none;border:1px solid #3a1a1a;border-radius:5px;color:#6b3030;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;cursor:pointer;transition:all .15s;white-space:nowrap}
 .clear-route-btn:hover{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.08)}
 .deptime-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;flex-shrink:0}
-.deptime-inp{background:#f0f4ff;border:1px solid #d1d5db;border-radius:5px;padding:5px 10px;color:#111827;font-family:'Barlow',sans-serif;font-size:13px;outline:none;width:110px;color-scheme:dark}
+.deptime-inp{background:#f5f7ff;border:1px solid #c7d2fe;border-radius:5px;padding:5px 10px;color:#111827;font-family:'Barlow',sans-serif;font-size:13px;outline:none;width:110px;color-scheme:light}
 .deptime-inp:focus{border-color:#6b7280}
 .planbtn{width:100%;border:none;border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;letter-spacing:3px;text-transform:uppercase;padding:14px 0;cursor:pointer;color:#fff;transition:filter .15s,transform .1s;position:relative}
 .planbtn::after{content:'';position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,rgba(255,255,255,.09) 0%,transparent 100%);pointer-events:none}
@@ -96,7 +96,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .srow{display:flex;align-items:center;gap:7px;min-height:34px}
 .snum{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;width:22px;text-align:right;color:#6b7280;flex-shrink:0}
 .iwrap{position:relative;width:130px;flex-shrink:0}
-.sinput{width:100%;background:#f0f4ff;border:1px solid #d1d5db;border-radius:5px;padding:6px 9px;color:#111827;font-family:'Barlow',sans-serif;font-size:12px;outline:none;transition:border-color .15s}
+.sinput{width:100%;background:#f5f7ff;border:1px solid #c7d2fe;border-radius:5px;padding:6px 9px;color:#111827;font-family:'Barlow',sans-serif;font-size:12px;outline:none;transition:border-color .15s}
 .sinput:focus{border-color:#6b7280;background:#21253a}
 .sinput.ok{border-color:#22c55e;color:#22c55e}
 .sinput.new{border-color:#f59e0b;color:#f59e0b}
@@ -371,7 +371,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .ai-preset{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:5px;border:1px solid #d1d5db;background:#ffffff;color:#6b7280;cursor:pointer;transition:all .15s;white-space:nowrap}
 .ai-preset:hover{border-color:#6366f1;color:#a5b4fc;background:#eef2ff}
 .ai-custom-row{display:flex;gap:6px}
-.ai-custom-inp{flex:1;background:#f0f4ff;border:1px solid #d1d5db;border-radius:5px;padding:7px 10px;color:#111827;font-family:'Barlow',sans-serif;font-size:12px;outline:none;transition:border-color .15s}
+.ai-custom-inp{flex:1;background:#f5f7ff;border:1px solid #c7d2fe;border-radius:5px;padding:7px 10px;color:#111827;font-family:'Barlow',sans-serif;font-size:12px;outline:none;transition:border-color .15s}
 .ai-custom-inp:focus{border-color:#6b7280}
 .ai-ask-btn{border:none;border-radius:5px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:7px 16px;cursor:pointer;transition:filter .15s;flex-shrink:0}
 .ai-ask-btn:hover{filter:brightness(1.15)}
@@ -4395,8 +4395,13 @@ async function openCompareMap(idx) {
 
     <!-- Plan button -->
     <div id="dp-plan-wrap" style="display:none;margin-bottom:16px">
-      <button class="dp-plan-btn" id="dp-plan-btn" onclick="runDailyPlan()">&#x25B6; Plan All Routes</button>
-      <span id="dp-plan-status" style="font-size:11px;color:#6b7280;margin-left:14px"></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="dp-plan-btn" id="dp-plan-btn" onclick="runDailyPlan()">&#x25B6; Plan All Routes</button>
+        <button id="dp-commit-btn" onclick="commitDailyPlan()" style="display:none;background:none;border:2px solid #22c55e;border-radius:8px;color:#22c55e;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;padding:10px 20px;cursor:pointer" title="Save this plan to Route Log history">&#x2713; Commit to Route Log</button>
+        <button onclick="openDailyPlanHistory()" style="background:none;border:1px solid #c7d2fe;border-radius:8px;color:#2952cc;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:10px 16px;cursor:pointer">&#x1F4CB; Plan History</button>
+        <button onclick="runHistoricalBaseline()" style="background:none;border:1px solid #f59e0b;border-radius:8px;color:#f59e0b;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:10px 16px;cursor:pointer" title="Run all historical data through Our Parameters, Optimized, and VRP to build a baseline">&#x1F4CA; Run Historical Baseline</button>
+      </div>
+      <span id="dp-plan-status" style="font-size:11px;color:#6b7280;margin-top:6px;display:block"></span>
     </div>
     <div id="dp-progress-wrap" style="display:none;background:#ffffff;border:1px solid #d1d5db;border-radius:10px;padding:14px;margin-bottom:16px">
       <div style="font-size:11px;color:#6b7280;font-family:'Barlow Condensed',sans-serif;margin-bottom:6px" id="dp-progress-label">Planning...</div>
@@ -5154,6 +5159,191 @@ async function openDpMap(idx) {
   var mapEl = document.getElementById('map');
   if (mapEl) mapEl.scrollIntoView({behavior:'smooth', block:'start'});
 }
+</script>
+
+<!-- DAILY PLAN HISTORY MODAL -->
+<div id="dp-history-overlay" style="position:fixed;inset:0;background:rgba(0,0,40,.5);z-index:3500;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border:1px solid #d1d5db;border-radius:12px;width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,60,.15)">
+    <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #e5e7eb">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;letter-spacing:1.5px;text-transform:uppercase;color:#111827;flex:1">&#x1F4CB; Daily Plan History</div>
+      <button onclick="closeDailyPlanHistory()" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer">&#x2715;</button>
+    </div>
+    <div id="dp-history-body" style="overflow-y:auto;flex:1;padding:14px 18px"></div>
+  </div>
+</div>
+
+<script>
+// ── COMMIT DAILY PLAN TO ROUTE LOG ────────────────────────────────────────────
+var _committedPlan = null;
+
+async function commitDailyPlan() {
+  var div = document.getElementById('dp-results');
+  var results = div._dpResults;
+  if (!results || !results.length) { alert('Run the plan first before committing.'); return; }
+
+  var btn = document.getElementById('dp-commit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Committing...';
+
+  var today = new Date();
+  var dateStr = today.toISOString().slice(0,10);
+  var fbUrl = localStorage.getItem('td_fb_url') || DEFAULT_FB_URL;
+  var errors = 0;
+
+  for (var ri = 0; ri < results.length; ri++) {
+    var r = results[ri];
+    var period = (DAILY_WINDOWS[_dailyMode][r.route] && DAILY_WINDOWS[_dailyMode][r.route].depart < 720) ? 'AM' : 'PM';
+    var departMin = DAILY_WINDOWS[_dailyMode][r.route] ? DAILY_WINDOWS[_dailyMode][r.route].depart : 435;
+
+    var entry = {
+      timestamp:     today.toISOString(),
+      departureTime: new Date(today.setHours(Math.floor(departMin/60), departMin%60, 0, 0)).toISOString(),
+      returnTime:    r.cReturn ? new Date(new Date().setHours(Math.floor(r.cReturn/60), r.cReturn%60, 0, 0)).toISOString() : today.toISOString(),
+      totalMin:      r.cTotal ? Math.round(r.cTotal) : 0,
+      miles:         r.cMi ? parseFloat(r.cMi.toFixed(2)) : 0,
+      driver:        '',
+      truck:         '',
+      runPeriod:     period,
+      isLate:        r.late || false,
+      plannedMode:   'daily-plan',
+      optimizedMi:   r.oMi ? parseFloat(r.oMi.toFixed(2)) : null,
+      stops:         r.cStops.map(function(s){ return { CustomerNumber:s.CustomerNumber, CompanyName:s.CompanyName, City:s.City, lat:s.lat||null, lon:s.lon||null }; })
+    };
+
+    try {
+      // Merge with existing log entries
+      var path = fbUrl + '/td_logs/' + r.route.replace(/ /g,'-').replace(/[.#$\[\]]/g,'_') + '.json';
+      var resp = await fetch(path);
+      var existing = [];
+      if (resp.ok) { var d = await resp.json(); if (Array.isArray(d)) existing = d; }
+      // Remove any existing entry for today + this period to avoid duplicates
+      existing = existing.filter(function(e){ return !(e.timestamp.slice(0,10)===dateStr && e.runPeriod===period); });
+      existing.unshift(entry); // newest first
+      await fetch(path, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(existing)});
+    } catch(e) { errors++; }
+  }
+
+  // Also save to daily plan history
+  try {
+    var histEntry = {
+      date: dateStr, mode: _dailyMode, committedAt: new Date().toISOString(),
+      routes: results.map(function(r){ return {route:r.route, stops:r.cStops.length, cMi:r.cMi, oMi:r.oMi, cReturn:r.cReturn}; })
+    };
+    var histPath = fbUrl + '/td_daily_plans/' + dateStr + '_' + _dailyMode + '.json';
+    await fetch(histPath, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(histEntry)});
+  } catch(e) {}
+
+  btn.disabled = false;
+  if (errors === 0) {
+    btn.textContent = '✓ Committed!';
+    btn.style.background = '#f0fdf4';
+    document.getElementById('dp-plan-status').textContent = '✓ Saved to Route Log — visible in the Route Log tab on each route.';
+    setTimeout(function(){ btn.textContent = '✓ Commit to Route Log'; btn.style.background = 'none'; }, 3000);
+    // Refresh route logs
+    RORDER.forEach(function(r){ renderLog(r); });
+  } else {
+    btn.textContent = '⚠ ' + errors + ' routes failed — check Firebase';
+    btn.style.borderColor = '#ef4444'; btn.style.color = '#ef4444';
+  }
+}
+
+// ── DAILY PLAN HISTORY ────────────────────────────────────────────────────────
+async function openDailyPlanHistory() {
+  document.getElementById('dp-history-overlay').style.display = 'flex';
+  document.getElementById('dp-history-body').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px;font-size:12px">Loading...</div>';
+  document.body.style.overflow = 'hidden';
+
+  var fbUrl = localStorage.getItem('td_fb_url') || DEFAULT_FB_URL;
+  var plans = [];
+  try {
+    var resp = await fetch(fbUrl + '/td_daily_plans.json');
+    if (resp.ok) {
+      var data = await resp.json();
+      if (data) {
+        plans = Object.entries(data).map(function(kv){ return Object.assign({key:kv[0]}, kv[1]); })
+          .sort(function(a,b){ return b.committedAt > a.committedAt ? 1 : -1; });
+      }
+    }
+  } catch(e) {}
+
+  if (!plans.length) {
+    document.getElementById('dp-history-body').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:40px;font-size:12px">No committed plans yet. Plan your routes and click "Commit to Route Log" to save history.</div>';
+    return;
+  }
+
+  var html = plans.map(function(p) {
+    var totalStops = (p.routes||[]).reduce(function(s,r){return s+r.stops;},0);
+    var totalMiC   = (p.routes||[]).reduce(function(s,r){return s+(r.cMi||0);},0);
+    var totalMiO   = (p.routes||[]).reduce(function(s,r){return s+(r.oMi||0);},0);
+    var saved = totalMiC - totalMiO;
+    return '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:10px">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:14px;color:#111827">' + p.date + '</span>' +
+        '<span style="font-size:10px;background:#eef2ff;color:#2952cc;border:1px solid #c7d2fe;border-radius:4px;padding:2px 7px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.5px">' + (p.mode||'morning').toUpperCase() + '</span>' +
+        '<span style="margin-left:auto;font-size:11px;color:#6b7280">' + totalStops + ' stops &middot; ' + totalMiC.toFixed(1) + ' mi</span>' +
+        (saved > 0 ? '<span style="font-size:11px;color:#22c55e">−' + saved.toFixed(1) + ' mi vs opt</span>' : '') +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">' +
+        (p.routes||[]).map(function(r){
+          var col = DAILY_WINDOWS[p.mode||'morning'] && DAILY_WINDOWS[p.mode||'morning'][r.route] ? DAILY_WINDOWS[p.mode||'morning'][r.route].color : '#6b7280';
+          return '<span style="font-size:10px;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 6px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + r.route.replace('Route ','R') + ' ('+r.stops+')</span>';
+        }).join('') +
+      '</div>' +
+      '</div>';
+  }).join('');
+
+  document.getElementById('dp-history-body').innerHTML = html;
+}
+
+function closeDailyPlanHistory() {
+  document.getElementById('dp-history-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('click', function(e){
+  if (e.target.id === 'dp-history-overlay') closeDailyPlanHistory();
+});
+
+// ── HISTORICAL BASELINE ───────────────────────────────────────────────────────
+// Pulls all existing Firebase route log data and runs it through the same
+// three-mode analysis (Our Parameters, Optimized, VRP) — stores results in
+// Firebase so the Analysis tab and Daily Plan can both read it.
+async function runHistoricalBaseline() {
+  // Switch to Analysis tab and trigger Compare All Modes
+  // (Analysis tab already has the full engine — no need to duplicate it)
+  document.querySelectorAll('.tbtn').forEach(function(b){
+    b.classList.remove('active'); b.style.borderBottomColor='transparent'; b.style.color='';
+  });
+  var abtn = document.getElementById('tbtn-analysis');
+  if (abtn) { abtn.classList.add('active'); abtn.style.borderBottomColor='#818cf8'; abtn.style.color='#2952cc'; }
+  document.querySelectorAll('.psec').forEach(function(s){s.classList.remove('active');});
+  var anSec = document.getElementById('sec-Analysis');
+  if (anSec) anSec.classList.add('active');
+
+  // Pre-select Compare All Modes
+  var compareRadio = document.querySelector('input[name="an-mode"][value="compare"]');
+  if (compareRadio) compareRadio.checked = true;
+
+  // Show a helpful status message
+  setTimeout(function(){
+    document.getElementById('dp-plan-status') && (document.getElementById('dp-plan-status').textContent = '');
+    var anResults = document.getElementById('an-results');
+    if (anResults && !anResults.innerHTML.trim()) {
+      anResults.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280;font-size:12px">' +
+        '<div style="font-size:20px;margin-bottom:8px">&#x1F4CA;</div>' +
+        'Click <strong>▶ Run Analysis</strong> above to process all historical runs through<br>' +
+        'Our Parameters, Fully Optimized, and Fewest Trucks — then compare them side by side.' +
+        '</div>';
+    }
+  }, 100);
+}
+
+// Show commit button after plan is ready
+var _origRenderDaily = renderDailyResults;
+renderDailyResults = function(results, vrpResult) {
+  _origRenderDaily(results, vrpResult);
+  var btn = document.getElementById('dp-commit-btn');
+  if (btn) btn.style.display = (results && results.length) ? 'inline-block' : 'none';
+};
 </script>
 
 </body>
