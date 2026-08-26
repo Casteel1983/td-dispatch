@@ -111,7 +111,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .srow-pin-btn:hover{color:#22c55e}
 .srow:hover .srow-pin-btn{display:block!important}
 
-.acdrop{display:none;position:absolute;top:calc(100% + 3px);left:0;min-width:270px;background:#21253a;border:1px solid #d1d5db;border-radius:7px;z-index:999;box-shadow:0 8px 28px rgba(0,0,0,.7);overflow:hidden;max-height:200px;overflow-y:auto}
+.acdrop{display:none;position:absolute;top:calc(100% + 3px);left:0;min-width:270px;background:#ffffff;border:1px solid #c7d2fe;border-radius:7px;z-index:999;box-shadow:0 8px 28px rgba(0,0,60,.12);overflow:hidden;max-height:200px;overflow-y:auto}
 .acitem{padding:8px 11px;cursor:pointer;border-bottom:1px solid #d1d5db;transition:background .1s}
 .acitem:last-child{border-bottom:none}
 .acitem:hover{background:#f0f4ff}
@@ -258,6 +258,16 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .ldm-act-btn.dir{border-color:#818cf8;color:#818cf8}
 .ldm-act-btn.dir:hover{background:#eef2ff}
 .ldm-act-btn.pr:hover{border-color:#3b82f6;color:#3b82f6}
+
+/* Global light-theme input override — catches any remaining dark inputs */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea, select {
+  background-color: #f5f7ff !important;
+  color: #111827 !important;
+  color-scheme: light !important;
+}
+input::placeholder, textarea::placeholder { color: #9ca3af !important; }
+input:focus, textarea:focus, select:focus { background-color: #fff !important; outline: none; }
 
 /* ── DAILY PLAN — LIGHT THEME ── */
 #sec-DailyPlan{background:#f0f4ff;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c7d2fe transparent}
@@ -561,7 +571,7 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#f0f4ff;border:1px solid #d1d5db;border-radius:12px;padding:28px 28px 24px;width:420px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,0,.8);animation:popIn .2s ease}
+.modal{background:#ffffff;border:1px solid #d1d5db;border-radius:12px;padding:28px 28px 24px;width:420px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,60,.15);animation:popIn .2s ease}
 @keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 .modal-badge{display:inline-block;background:#f59e0b22;border:1px solid #f59e0b55;color:#f59e0b;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:14px}
 .modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;margin-bottom:6px;color:#fff}
