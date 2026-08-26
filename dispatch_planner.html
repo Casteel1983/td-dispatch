@@ -2060,7 +2060,7 @@ function initConfirmMap() {
   if (confirmMap) return;
   confirmMap = L.map('confirm-map', {zoomControl: true, attributionControl: false})
                 .setView([DEPOT.lat, DEPOT.lon], 9);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom: 19})
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap contributors'})
    .addTo(confirmMap);
 }
 
@@ -3101,7 +3101,7 @@ function initLocMap() {
   if (locMap) return;
   locMap = L.map('loc-pick-map', {zoomControl: true, attributionControl: false})
             .setView([DEPOT.lat, DEPOT.lon], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom: 19}).addTo(locMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap contributors'}).addTo(locMap);
   locMap.on('click', function(e) { setLocPin(e.latlng.lat, e.latlng.lng); });
 }
 
@@ -3230,7 +3230,7 @@ function persistCustomer(cnum, cust) {
 
 window.addEventListener('load',function(){
   leafmap=L.map('map',{zoomControl:true,attributionControl:false}).setView([31.2,-83.5],8);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(leafmap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(leafmap);
   buildTabs();
   wireInputs();
   RORDER.forEach(function(r){ loadDriverTruck(r); });
@@ -3799,7 +3799,7 @@ function initAnalysisMap() {
   if (_analysisMap) return;
   _analysisMap = L.map('an-map-container', {zoomControl: true, attributionControl: false})
     .setView([DEPOT.lat, DEPOT.lon], 9);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom: 19})
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap contributors'})
    .addTo(_analysisMap);
 }
 
