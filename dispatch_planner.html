@@ -405,7 +405,7 @@ input:focus, textarea:focus, select:focus { background-color: #fff !important; o
 .ai-response p{margin-bottom:8px}
 .ai-meta{font-size:10px;color:#9ca3af;text-align:right;margin-top:10px;padding-top:8px;border-top:1px solid #d1d5db}
 
-#map{flex:1;min-width:0}
+#map{flex:1;min-width:0;height:100%;min-height:0}
 
 /* ── SPECIAL INSTRUCTIONS ── */
 .inst-wrap{padding:8px 14px 10px;border-bottom:1px solid #d1d5db;flex-shrink:0}
@@ -3316,6 +3316,8 @@ window.addEventListener('load',function(){
   initTestRouteSlots();
   showSection(activeRoute);
   drawRefMap(activeRoute);
+  // Force Leaflet to recalculate dimensions after flex layout settles
+  setTimeout(function(){ if(leafmap) leafmap.invalidateSize(); }, 100);
 });
 
 // ── LOG DETAIL MODAL ──────────────────────────────────────────────────────────
