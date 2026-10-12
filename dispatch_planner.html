@@ -806,7 +806,7 @@ async function checkPwd(e) {
     <div class="cmod-head">
       <div class="cmod-route" id="cmod-route-label"></div>
       <div class="cmod-title">Review &amp; Confirm Route</div>
-      <div class="cmod-sub">Use the arrows to adjust stop order, then finalize to log the route.</div>
+      <div class="cmod-sub">Drag stops to reorder, or use the buttons below, then finalize to log the route.</div>
     </div>
     <div class="cmod-stats" id="cmod-stats"></div>
     <div class="cmod-body">
@@ -825,6 +825,9 @@ async function checkPwd(e) {
     <div class="cmod-foot">
       <button class="cmod-back" onclick="closeConfirm()">&#x2190; Back to Edit</button>
       <button class="cmod-recalc" id="cmod-recalc-btn" onclick="recalcConfirm()">&#x21BA; Recalculate</button>
+      <button class="cmod-recalc" onclick="confirmReverseRoute()" title="Reverse the current stop order">&#x21C5; Reverse</button>
+      <button class="cmod-recalc" id="cmod-short-btn" onclick="confirmShortestRoute()" title="Re-optimise for fewest miles">&#x1F4CF; Shortest</button>
+      <button class="cmod-recalc" id="cmod-quick-btn" onclick="confirmQuickestRoute()" title="Re-optimise for fastest drive time">&#x26A1; Quickest</button>
       <button class="cmod-directions" id="cmod-dir-btn" onclick="openDirectionsFromConfirm()">&#x1F5FA; View Directions</button>
       <button class="cmod-finalize" onclick="finalizeRoute()">&#x2713; Finalize &amp; Log Route</button>
     </div>
@@ -1701,14 +1704,7 @@ function showRes(route, sched, ng, miles, depTime){
   var footerTxt = '~'+miles.toFixed(0)+' mi &nbsp;|&nbsp; '+fmtDuration(sched.totalMin)+' total &nbsp;|&nbsp; Return: '+fmtTime(sched.returnTime)+(sourceNote?' &nbsp;<span style="color:#22c55e;font-size:9px">&#x2713; '+sourceNote+'</span>':'');
 
   el.innerHTML =
-    '<div class="res-edit-bar">'
-      +'<span class="res-edit-label">Edit:</span>'
-      +'<button class="res-edit-btn" id="btn-rev-'+rid+'" onclick="reverseRoute(\''+route+'\')">&#x21C5; Reverse</button>'
-      +'<button class="res-edit-btn" id="btn-short-'+rid+'" onclick="shortestRoute(\''+route+'\')">&#x1F4CF; Shortest</button>'
-      +'<button class="res-edit-btn" id="btn-quick-'+rid+'" onclick="quickestRoute(\''+route+'\')">&#x26A1; Quickest</button>'
-      +'<span id="edit-status-'+rid+'" style="font-size:10px;color:#6b7280;margin-left:4px"></span>'
-    +'</div>'
-    +'<div class="rhead">&#x2705; '+sched.stops.length+' STOPS &mdash; Returns '+fmtTime(sched.returnTime)+'</div>'
+    '<div class="rhead">&#x2705; '+sched.stops.length+' STOPS &mdash; Returns '+fmtTime(sched.returnTime)+'</div>'
     +'<div class="res-sortlist" id="sortlist-'+rid+'">'
       +rowsHtml
     +'</div>'
@@ -2517,12 +2513,9 @@ async function renderConfirm() {
     var noGps   = (!c.lat || !c.lon) ? ' <span style="color:#ef4444;font-size:9px">NO GPS</span>' : '';
     var noGpsBtn = (!c.lat || !c.lon) ?
       '<button class="cstop-pin-btn" onclick="openLocEditor(\''+c.CustomerNumber+'\')" title="Pin location on map" style="color:#f59e0b;border-color:#3a2a00">&#x1F4CD; Pin</button>' : '';
-    html += '<div class="cstop">' +
+    html += '<div class="cstop" data-idx="'+i+'">' +
+      '<span class="drag-handle" style="font-size:16px;color:#c4c9d0;cursor:grab;padding:0 6px;user-select:none" title="Drag to reorder">&#x2807;</span>' +
       '<div class="cstop-n" style="color:'+color+'">'+(i+1)+'</div>' +
-      '<div class="cstop-btns">' +
-        '<button class="cstop-btn" '+(i===0?'disabled':'')+' onclick="moveStop('+i+',-1)">&#9650;</button>' +
-        '<button class="cstop-btn" '+(i===s.ordered.length-1?'disabled':'')+' onclick="moveStop('+i+',1)">&#9660;</button>' +
-      '</div>' +
       '<div class="cstop-info">' +
         '<div class="cstop-name">'+(c.CompanyName||'')+isNew+is2nd+isOneOff+noGps+'</div>' +
         '<div class="cstop-detail">#'+c.CustomerNumber+' &middot; '+(c.City||'')+', '+(c.State||'')+'</div>' +
@@ -2533,6 +2526,27 @@ async function renderConfirm() {
       '</div>';
   });
   list.innerHTML = html;
+
+  // Init SortableJS on the confirm stop list
+  if (typeof Sortable !== 'undefined') {
+    Sortable.create(list, {
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd: function() {
+        // Read new order from DOM and update confirmState.ordered
+        var rows = list.querySelectorAll('.cstop[data-idx]');
+        var newOrdered = [];
+        rows.forEach(function(row) {
+          var idx = parseInt(row.getAttribute('data-idx'));
+          if (!isNaN(idx) && confirmState.ordered[idx]) newOrdered.push(confirmState.ordered[idx]);
+        });
+        if (newOrdered.length) confirmState.ordered = newOrdered;
+        renderConfirm();
+      }
+    });
+  }
 
   // No-GPS stops
   var ng = document.getElementById('cmod-nogeo');
@@ -2547,6 +2561,47 @@ async function renderConfirm() {
   // Redraw BOTH maps with current order
   drawPlanned(s.ordered, s.route);
   drawConfirmMap(s.ordered, s.route);
+}
+
+// ── CONFIRM MODAL ROUTE EDITING ──────────────────────────────────────────────
+function confirmReverseRoute() {
+  confirmState.ordered = confirmState.ordered.slice().reverse();
+  renderConfirm();
+}
+
+function confirmShortestRoute() {
+  var wg = confirmState.ordered.filter(function(s){return s.lat&&s.lon;});
+  var ng = confirmState.ordered.filter(function(s){return !s.lat||!s.lon;});
+  if (wg.length < 2) return;
+  confirmState.ordered = opt2(nn(wg, DEPOT), DEPOT).concat(ng);
+  renderConfirm();
+}
+
+async function confirmQuickestRoute() {
+  var wg = confirmState.ordered.filter(function(s){return s.lat&&s.lon;});
+  var ng = confirmState.ordered.filter(function(s){return !s.lat||!s.lon;});
+  if (wg.length < 2) { confirmShortestRoute(); return; }
+
+  var btns = ['cmod-short-btn','cmod-quick-btn','cmod-recalc-btn'];
+  btns.forEach(function(id){var b=document.getElementById(id);if(b){b.disabled=true;b.style.opacity='.5';}});
+
+  try {
+    var pts = [{lat:DEPOT.lat,lon:DEPOT.lon}].concat(wg).concat([{lat:DEPOT.lat,lon:DEPOT.lon}]);
+    var coords = pts.map(function(p){return p.lon+','+p.lat;}).join(';');
+    var resp = await fetch('https://router.project-osrm.org/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last');
+    if (!resp.ok) throw new Error('OSRM unavailable');
+    var json = await resp.json();
+    if (!json.waypoints) throw new Error('No waypoints');
+    var wps = json.waypoints.slice(1, json.waypoints.length - 1);
+    var pairs = wps.map(function(wp, i){ return {stop:wg[i], tripIdx:wp.waypoint_index}; });
+    pairs.sort(function(a,b){return a.tripIdx - b.tripIdx;});
+    confirmState.ordered = pairs.map(function(p){return p.stop;}).concat(ng);
+    renderConfirm();
+  } catch(e) {
+    confirmShortestRoute();
+  } finally {
+    btns.forEach(function(id){var b=document.getElementById(id);if(b){b.disabled=false;b.style.opacity='';}});
+  }
 }
 
 async function moveStop(idx, dir) {
