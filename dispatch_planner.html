@@ -1018,11 +1018,14 @@ var ROUTE_CONSTRAINTS = {
     cityFirstCustomer: { 'VALDOSTA': '200266' }
   },
   'Route 5': {
-    // Morning run: Route 5 + Route 1 territory — geographic sweep east from Tifton
-    // Afternoon run: only Route 5 customers loaded — Route 1 cities skipped (empty groups)
-    cityOrder: ['NASHVILLE','ALAPAHA','OCILLA','FITZGERALD','BROXTON','DOUGLAS','HOMERVILLE','ALMA','BLACKSHEAR','WAYCROSS','NAHUNTA','HOBOKEN','HORTENSE'],
-    cityFirstCustomer: {}
-    // Free stops (Pearson, Willacoochee, etc.) NN-optimised from last fixed-city position
+    // EXACT city order — hardcoded per operational requirement
+    // MORNING (Route 5 + Route 1 customers loaded):
+    //   Nashville → Ocilla → Fitzgerald → Broxton → Douglas (JMC first) →
+    //   Alma → Blackshear → Nahunta → Waycross → Homerville → Pearson → Willacoochee
+    // AFTERNOON (Route 5 customers only — Route 1 cities auto-skipped as empty):
+    //   Nashville → Ocilla → Fitzgerald → Broxton → Douglas → Pearson → Willacoochee
+    cityOrder: ['NASHVILLE','OCILLA','FITZGERALD','BROXTON','DOUGLAS','ALMA','BLACKSHEAR','NAHUNTA','WAYCROSS','HOMERVILLE','PEARSON','WILLACOOCHEE'],
+    cityFirstCustomer: { 'DOUGLAS': '101161' }  // JMC Tire Co. always first stop in Douglas
   },
   'Route 7': {
     // Fixed lead cities in order, then optimize remaining outward (farthest stop last)
