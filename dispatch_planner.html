@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>TD Dispatch Planner</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -147,8 +148,19 @@ header{background:linear-gradient(135deg,#1a3a8f 0%,#2952cc 60%,#1e40af 100%);bo
 .oo-add-btn:hover{filter:brightness(1.12)}
 .oo-status{font-size:11px;min-height:16px;margin-top:10px;text-align:center}
 
-.resarea{border-top:1px solid #d1d5db;background:#ffffff;flex-shrink:0;max-height:160px;overflow-y:auto;display:none;scrollbar-width:thin;scrollbar-color:#d1d5db transparent}
-.resarea.show{display:block}
+.resarea{border-top:1px solid #d1d5db;background:#ffffff;flex-shrink:0;max-height:300px;display:none;flex-direction:column;overflow:hidden}
+.resarea.show{display:flex}
+.res-sortlist{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#d1d5db transparent}
+.res-edit-bar{display:flex;gap:5px;align-items:center;padding:5px 8px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-shrink:0;flex-wrap:wrap}
+.res-edit-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;margin-right:2px}
+.res-edit-btn{background:none;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:.5px;cursor:pointer;color:#374151;white-space:nowrap;transition:all .1s}
+.res-edit-btn:hover{border-color:#2952cc;color:#2952cc;background:#eef2ff}
+.res-edit-btn.loading{opacity:.5;cursor:wait}
+.drag-handle{cursor:grab;color:#c4c9d0;font-size:14px;padding:0 4px 0 2px;user-select:none;flex-shrink:0;line-height:1}
+.rrow{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #f3f4f6;cursor:default}
+.rrow.sortable-chosen{background:#eef2ff !important}
+.rrow.sortable-ghost{background:#f0f4ff;opacity:.6}
+.rrow.sortable-drag{background:#fff;box-shadow:0 4px 16px rgba(0,0,60,.12);border-radius:4px}
 .rhead{padding:7px 14px 4px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#22c55e;position:sticky;top:0;background:#ffffff;border-bottom:1px solid #d1d5db}
 .rrow{display:flex;align-items:center;gap:8px;padding:5px 14px;border-bottom:1px solid rgba(38,42,62,.4);font-size:12px}
 .rrow:last-of-type{border-bottom:none}
@@ -990,8 +1002,9 @@ var ROUTE_CONSTRAINTS = {
     cityFirstCustomer: { 'VALDOSTA': '200266' }
   },
   'Route 5': {
-    cityOrder: ['NASHVILLE','ALAPAHA','FITZGERALD','BROXTON','DOUGLAS'],
-    cityFirstCustomer: {}
+    cityOrder: ['NASHVILLE','ALAPAHA','OCILLA','FITZGERALD','BROXTON','DOUGLAS','ALMA'],
+    cityFirstCustomer: {},
+    sweepOutward: true   // after fixed city order, optimize remaining stops by nearest-neighbour from Alma
   },
   'Route 7': {
     // Fixed lead cities in order, then optimize remaining outward (farthest stop last)
@@ -1633,26 +1646,197 @@ async function doRoute(route){
     }
   }
 
-  showRes(route, sched, noGeo, miles);
+  showRes(route, sched, noGeo, miles, depTime);
   drawPlanned(withGeo, route);
   // Open review modal instead of logging immediately
   openConfirm(route, withGeo, noGeo, miles, depTime);
 }
 
-function showRes(route, sched, ng, miles){
-  var rid=route.replace(/ /g,'-'),el=document.getElementById('res-'+rid);
+// ── EDITABLE ROUTE STATE ─────────────────────────────────────────────────────
+var _editableRoutes = {};
+
+function showRes(route, sched, ng, miles, depTime){
+  var rid=route.replace(/ /g,'-'), el=document.getElementById('res-'+rid);
   if(!el) return;
   var color=RC[route];
-  var h='<div class="rhead">&#x2705; OPTIMIZED &mdash; '+sched.stops.length+' STOPS &mdash; Returns '+fmtTime(sched.returnTime)+'</div>';
+
+  // Store state so edit buttons can work
+  _editableRoutes[route] = {
+    stops:    sched.stops.map(function(s){return s.customer;}),
+    ng:       ng,
+    depTime:  depTime || new Date(),
+    source:   sched._source || ''
+  };
+
+  var rowsHtml = '';
   sched.stops.forEach(function(s,i){
-    var timeStr=s.arrivalTime?fmtTime(s.arrivalTime):'';
-    var badge=s.customer.isNew?' <span style="color:#f59e0b;font-size:9px">NEW</span>':'';
-    h+='<div class="rrow"><div class="rn" style="color:'+color+'">'+(i+1)+'</div><div class="rname">'+(s.customer.CompanyName||'')+badge+'</div><div class="rcity">'+(s.customer.City||'')+'</div><div class="rtime">'+timeStr+'</div></div>';
+    var timeStr = s.arrivalTime ? fmtTime(s.arrivalTime) : '';
+    var badge   = s.customer.isNew ? ' <span style="color:#f59e0b;font-size:9px">NEW</span>' : '';
+    rowsHtml += '<div class="rrow" data-idx="'+i+'">'
+      +'<span class="drag-handle" title="Drag to reorder">&#x2807;</span>'
+      +'<div class="rn" style="color:'+color+'">'+(i+1)+'</div>'
+      +'<div class="rname">'+(s.customer.CompanyName||'')+badge+'</div>'
+      +'<div class="rcity">'+(s.customer.City||'')+'</div>'
+      +'<div class="rtime">'+timeStr+'</div>'
+      +'</div>';
   });
-  if(ng.length) h+='<div class="rfoot" style="color:#f59e0b">&#x26A0; '+ng.length+' stop(s) skipped (no GPS)</div>';
+
+  var noGeoWarn = ng.length ? '<div class="rfoot" style="color:#f59e0b">&#x26A0; '+ng.length+' stop(s) skipped (no GPS)</div>' : '';
   var sourceNote = sched._source || '';
-  h+='<div class="rfoot">~'+miles.toFixed(0)+' mi &nbsp;|&nbsp; '+fmtDuration(sched.totalMin)+' total &nbsp;|&nbsp; Return: '+fmtTime(sched.returnTime)+(sourceNote?' &nbsp;<span style="color:#22c55e;font-size:9px">&#x2713; '+sourceNote+'</span>':'')+'</div>';
-  el.innerHTML=h; el.classList.add('show');
+  var footerTxt = '~'+miles.toFixed(0)+' mi &nbsp;|&nbsp; '+fmtDuration(sched.totalMin)+' total &nbsp;|&nbsp; Return: '+fmtTime(sched.returnTime)+(sourceNote?' &nbsp;<span style="color:#22c55e;font-size:9px">&#x2713; '+sourceNote+'</span>':'');
+
+  el.innerHTML =
+    '<div class="res-edit-bar">'
+      +'<span class="res-edit-label">Edit:</span>'
+      +'<button class="res-edit-btn" id="btn-rev-'+rid+'" onclick="reverseRoute(\''+route+'\')">&#x21C5; Reverse</button>'
+      +'<button class="res-edit-btn" id="btn-short-'+rid+'" onclick="shortestRoute(\''+route+'\')">&#x1F4CF; Shortest</button>'
+      +'<button class="res-edit-btn" id="btn-quick-'+rid+'" onclick="quickestRoute(\''+route+'\')">&#x26A1; Quickest</button>'
+      +'<span id="edit-status-'+rid+'" style="font-size:10px;color:#6b7280;margin-left:4px"></span>'
+    +'</div>'
+    +'<div class="rhead">&#x2705; '+sched.stops.length+' STOPS &mdash; Returns '+fmtTime(sched.returnTime)+'</div>'
+    +'<div class="res-sortlist" id="sortlist-'+rid+'">'
+      +rowsHtml
+    +'</div>'
+    +noGeoWarn
+    +'<div class="rfoot" id="resfooter-'+rid+'">'+footerTxt+'</div>';
+
+  el.classList.add('show');
+
+  // Initialise Sortable on the stop list
+  var listEl = document.getElementById('sortlist-'+rid);
+  if(listEl && typeof Sortable !== 'undefined'){
+    Sortable.create(listEl, {
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(){ onStopsReordered(route); }
+    });
+  }
+}
+
+// Called after every drag-drop — reads current DOM order and recalculates
+async function onStopsReordered(route){
+  var data = _editableRoutes[route]; if(!data) return;
+  var rid  = route.replace(/ /g,'-');
+  var rows = document.querySelectorAll('#sortlist-'+rid+' .rrow');
+  var newStops = [];
+  rows.forEach(function(r){ var idx=parseInt(r.dataset.idx); if(!isNaN(idx)) newStops.push(data.stops[idx]); });
+  await applyEditOrder(route, newStops, 'Manual');
+}
+
+async function applyEditOrder(route, newStops, label){
+  var data = _editableRoutes[route]; if(!data||!newStops.length) return;
+  var rid  = route.replace(/ /g,'-');
+  var color = RC[route];
+  var withGeo = newStops.filter(function(s){return s.lat&&s.lon;});
+  var noGeo   = newStops.filter(function(s){return !s.lat||!s.lon;});
+  if(!withGeo.length) return;
+
+  // Recalculate with real drive times
+  var statusEl = document.getElementById('edit-status-'+rid);
+  if(statusEl) statusEl.textContent = 'Recalculating…';
+
+  var miles = dist(withGeo, DEPOT);
+  var sched;
+  try { sched = await calcSchedule(withGeo, data.depTime); }
+  catch(e){ if(statusEl) statusEl.textContent = 'Error'; return; }
+
+  // Update stored stops with new order
+  _editableRoutes[route].stops = newStops;
+
+  // Re-render rows in new order
+  var listEl = document.getElementById('sortlist-'+rid);
+  if(listEl){
+    var rowsHtml = '';
+    sched.stops.forEach(function(s,i){
+      var timeStr = s.arrivalTime ? fmtTime(s.arrivalTime) : '';
+      var badge   = s.customer.isNew ? ' <span style="color:#f59e0b;font-size:9px">NEW</span>' : '';
+      rowsHtml += '<div class="rrow" data-idx="'+i+'">'
+        +'<span class="drag-handle" title="Drag to reorder">&#x2807;</span>'
+        +'<div class="rn" style="color:'+color+'">'+(i+1)+'</div>'
+        +'<div class="rname">'+(s.customer.CompanyName||'')+badge+'</div>'
+        +'<div class="rcity">'+(s.customer.City||'')+'</div>'
+        +'<div class="rtime">'+timeStr+'</div>'
+        +'</div>';
+    });
+    listEl.innerHTML = rowsHtml;
+    // Re-init Sortable since innerHTML was replaced
+    if(typeof Sortable !== 'undefined'){
+      Sortable.create(listEl,{animation:150,handle:'.drag-handle',ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',dragClass:'sortable-drag',onEnd:function(){onStopsReordered(route);}});
+    }
+  }
+  // Update header and footer
+  var head = document.querySelector('#res-'+rid+' .rhead');
+  if(head) head.innerHTML='&#x2705; '+(label||'EDITED')+' &mdash; '+sched.stops.length+' STOPS &mdash; Returns '+fmtTime(sched.returnTime);
+  var foot = document.getElementById('resfooter-'+rid);
+  if(foot) foot.innerHTML='~'+miles.toFixed(0)+' mi &nbsp;|&nbsp; '+fmtDuration(sched.totalMin)+' total &nbsp;|&nbsp; Return: '+fmtTime(sched.returnTime);
+  if(statusEl) statusEl.textContent = '';
+
+  // Update the input slots to reflect new order
+  var n=slotCount[route];
+  var orderedAll = newStops.concat(noGeo);
+  for(var i=1;i<=n;i++){
+    var inp=document.getElementById('i-'+rid+'-'+i);
+    var inf=document.getElementById('s-'+rid+'-'+i);
+    var c=orderedAll[i-1]||null;
+    if(inp){
+      if(c){inp.value=String(c.CustomerNumber);inp.className='sinput '+(c.isNew?'new':'ok');if(inf){inf.className='sinfo'+(c.isNew?' isnew':'');inf.innerHTML='<span>'+(c.CompanyName||'')+'</span> <span class="city">'+(c.City||'')+'</span>';}}
+      else{inp.value='';inp.className='sinput';if(inf){inf.className='sinfo';inf.innerHTML='';}}
+    }
+  }
+  drawPlanned(withGeo, route);
+}
+
+function reverseRoute(route){
+  var data=_editableRoutes[route]; if(!data) return;
+  applyEditOrder(route, data.stops.slice().reverse(), 'REVERSED');
+}
+
+function shortestRoute(route){
+  var data=_editableRoutes[route]; if(!data) return;
+  var withGeo=data.stops.filter(function(s){return s.lat&&s.lon;});
+  var noGeo  =data.stops.filter(function(s){return !s.lat||!s.lon;});
+  var sorted = nn(withGeo, DEPOT);
+  sorted = opt2(sorted, DEPOT);
+  applyEditOrder(route, sorted.concat(noGeo), 'SHORTEST');
+}
+
+async function quickestRoute(route){
+  var data=_editableRoutes[route]; if(!data) return;
+  var rid=route.replace(/ /g,'-');
+  var withGeo=data.stops.filter(function(s){return s.lat&&s.lon;});
+  if(withGeo.length < 2){ shortestRoute(route); return; }
+
+  var btns=['btn-rev-'+rid,'btn-short-'+rid,'btn-quick-'+rid];
+  btns.forEach(function(b){var el=document.getElementById(b);if(el){el.disabled=true;el.classList.add('loading');}});
+  var statusEl=document.getElementById('edit-status-'+rid);
+  if(statusEl) statusEl.textContent='⚡ Finding quickest order…';
+
+  try {
+    var pts=[{lat:DEPOT.lat,lon:DEPOT.lon}].concat(withGeo).concat([{lat:DEPOT.lat,lon:DEPOT.lon}]);
+    var coords=pts.map(function(p){return p.lon+','+p.lat;}).join(';');
+    var resp=await fetch('https://router.project-osrm.org/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last');
+    if(!resp.ok) throw new Error('OSRM unavailable');
+    var json=await resp.json();
+    if(!json.waypoints||!json.trips) throw new Error('No trip data');
+
+    // waypoints[i] = input coord i; .waypoint_index = its position in optimised tour
+    // skip index 0 (depot-start) and last (depot-end)
+    var wps=json.waypoints.slice(1,json.waypoints.length-1);
+    var pairs=wps.map(function(wp,i){return{stop:withGeo[i],tripIdx:wp.waypoint_index};});
+    pairs.sort(function(a,b){return a.tripIdx-b.tripIdx;});
+    var ordered=pairs.map(function(p){return p.stop;});
+    var noGeo=data.stops.filter(function(s){return !s.lat||!s.lon;});
+    await applyEditOrder(route, ordered.concat(noGeo), '⚡ QUICKEST');
+  } catch(e) {
+    if(statusEl) statusEl.textContent='OSRM unavailable — using shortest';
+    shortestRoute(route);
+  } finally {
+    btns.forEach(function(b){var el=document.getElementById(b);if(el){el.disabled=false;el.classList.remove('loading');}});
+    setTimeout(function(){if(statusEl) statusEl.textContent='';},2000);
+  }
 }
 
 // ── ADD STOP ──
