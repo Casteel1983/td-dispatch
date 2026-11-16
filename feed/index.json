@@ -1,10 +1,10 @@
 {
- "updated": "2026-11-16T15:42:55",
+ "updated": "2026-11-16T17:00:35",
  "runs": [
   {
    "day": "2026-11-16",
    "run": "morning",
-   "orders": 54,
+   "orders": 64,
    "files": [
     "Local.txt",
     "Route-3.txt",
@@ -19,7 +19,7 @@
   {
    "day": "2026-11-16",
    "run": "afternoon",
-   "orders": 40,
+   "orders": 59,
    "files": [
     "Local.txt",
     "Route-3.txt",
@@ -28,6 +28,14 @@
     "Route-7.txt",
     "Route-8.txt",
     "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-16",
+   "run": "local",
+   "orders": 32,
+   "files": [
+    "Local.txt"
    ]
   },
   {
