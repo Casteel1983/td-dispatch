@@ -1,0 +1,323 @@
+{
+ "updated": "2026-11-16T15:42:55",
+ "runs": [
+  {
+   "day": "2026-11-16",
+   "run": "morning",
+   "orders": 54,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-16",
+   "run": "afternoon",
+   "orders": 40,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-13",
+   "run": "morning",
+   "orders": 67,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-13",
+   "run": "afternoon",
+   "orders": 41,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-12",
+   "run": "morning",
+   "orders": 66,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-12",
+   "run": "afternoon",
+   "orders": 30,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-11",
+   "run": "morning",
+   "orders": 69,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-11",
+   "run": "afternoon",
+   "orders": 34,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-10",
+   "run": "morning",
+   "orders": 76,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-10",
+   "run": "afternoon",
+   "orders": 36,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-09",
+   "run": "morning",
+   "orders": 66,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-09",
+   "run": "afternoon",
+   "orders": 60,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-06",
+   "run": "morning",
+   "orders": 32,
+   "files": [
+    "Local.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-06",
+   "run": "afternoon",
+   "orders": 56,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-05",
+   "run": "morning",
+   "orders": 76,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-05",
+   "run": "afternoon",
+   "orders": 39,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-04",
+   "run": "morning",
+   "orders": 55,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-04",
+   "run": "afternoon",
+   "orders": 53,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-03",
+   "run": "morning",
+   "orders": 96,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-03",
+   "run": "afternoon",
+   "orders": 60,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-02",
+   "run": "morning",
+   "orders": 79,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-02",
+   "run": "afternoon",
+   "orders": 59,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  }
+ ]
+}
