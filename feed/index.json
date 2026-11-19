@@ -1,6 +1,21 @@
 {
- "updated": "2026-11-18T17:00:32",
+ "updated": "2026-11-19T06:00:31",
  "runs": [
+  {
+   "day": "2026-11-19",
+   "run": "morning",
+   "orders": 27,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
+    "Route-6.txt",
+    "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
   {
    "day": "2026-11-18",
    "run": "morning",
@@ -310,35 +325,6 @@
     "Route-4.txt",
     "Route-5.txt",
     "Route-6.txt",
-    "Route-7.txt",
-    "Route-8.txt",
-    "dailyplan.csv"
-   ]
-  },
-  {
-   "day": "2026-11-04",
-   "run": "morning",
-   "orders": 55,
-   "files": [
-    "Local.txt",
-    "Route-3.txt",
-    "Route-4.txt",
-    "Route-5.txt",
-    "Route-6.txt",
-    "Route-7.txt",
-    "Route-8.txt",
-    "dailyplan.csv"
-   ]
-  },
-  {
-   "day": "2026-11-04",
-   "run": "afternoon",
-   "orders": 53,
-   "files": [
-    "Local.txt",
-    "Route-3.txt",
-    "Route-4.txt",
-    "Route-5.txt",
     "Route-7.txt",
     "Route-8.txt",
     "dailyplan.csv"
