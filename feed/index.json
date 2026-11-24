@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-24T07:00:33",
+ "updated": "2026-11-24T12:00:37",
  "runs": [
   {
    "day": "2026-11-24",
@@ -12,6 +12,19 @@
     "Route-5.txt",
     "Route-6.txt",
     "Route-7.txt",
+    "Route-8.txt",
+    "dailyplan.csv"
+   ]
+  },
+  {
+   "day": "2026-11-24",
+   "run": "afternoon",
+   "orders": 19,
+   "files": [
+    "Local.txt",
+    "Route-3.txt",
+    "Route-4.txt",
+    "Route-5.txt",
     "Route-8.txt",
     "dailyplan.csv"
    ]
